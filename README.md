@@ -1,146 +1,128 @@
-# Personal Dashboard
+# Personal Dashboard — Browser Homepage
 
-แดชบอร์ดส่วนตัวสำหรับจัดการ Bookmark และลิงก์สำคัญ พร้อมระบบค้นหา, หมวดหมู่, Quick URL, Backup/Restore และ Command Palette ในหน้าเดียว
+Single-file HTML homepage สำหรับตั้งเป็นหน้าแรกของเบราว์เซอร์ ทำงานแบบ dark dashboard ส่วนตัว ไม่ใช้ Framework หรือ CDN ภายนอกใดๆ — เปิดไฟล์ `index.html` ได้ทันที ทำงาน offline ได้ 100% (ยกเว้นส่วน favicon และ Google Search ที่ต้องใช้อินเทอร์เน็ต)
 
-## Features
+## เริ่มใช้งาน
 
-### 🔖 Bookmark Manager
+1. ดาวน์โหลด `index.html`
+2. ตั้งเป็นหน้า Homepage / New Tab ของเบราว์เซอร์ (หรือเปิดไฟล์ตรงๆ ก็ได้)
+3. ใช้งานได้เลย ไม่ต้องติดตั้งอะไรเพิ่ม
 
-* เพิ่ม แก้ไข และลบ Bookmark
-* จัดหมวดหมู่ Bookmark ได้
-* ลากและวาง (Drag & Drop) เพื่อจัดลำดับ
-* แสดง Favicon อัตโนมัติ
-* เปิดเว็บไซต์ในแท็บใหม่
+**ตั้งเป็นหน้า New Tab:**
+- **Chrome/Edge**: ต้องใช้ Extension ช่วย (เช่น "Custom New Tab URL") เพราะเบราว์เซอร์ไม่อนุญาตให้ตั้ง local file เป็น New Tab โดยตรง
+- **Firefox**: `about:preferences` → Home → New Windows and Tabs → Custom URLs → ใส่ path แบบ `file:///C:/path/to/index.html`
 
-### 📂 Category Management
+## ฟีเจอร์
 
-* สร้างหมวดหมู่ใหม่
-* เปลี่ยนชื่อหมวดหมู่
-* ลบหมวดหมู่
-* ย้าย Bookmark ไปยังหมวดหมู่สำรองอัตโนมัติเมื่อหมวดหมู่ถูกลบ
+### Header
+- ชื่อ Dashboard พร้อมคำทักทายที่เปลี่ยนตามช่วงเวลาในวัน
+- นาฬิกาเรียลไทม์ (อัปเดตทุกวินาที) พร้อมวันที่แบบไทย (พ.ศ.)
 
-### 🔍 Universal Search
+### Universal Search
+- ช่องค้นหาขนาดใหญ่ กด **Enter** เพื่อค้นหาผ่าน Google
+- ถ้าพิมพ์เป็น URL (เช่น `youtube.com`) จะเปิดลิงก์ตรงแทนการค้นหา
+- กด **Ctrl+K** (หรือ Cmd+K บน Mac) เพื่อเปิด Command Palette
 
-* ค้นหาผ่าน Google ได้ทันที
-* รองรับการเปิด URL โดยตรง
-* ตรวจจับ URL อัตโนมัติ
+### Bookmark Manager
+- แสดงเป็น Card Grid, คลิกเพื่อเปิดในแท็บใหม่
+- **เพิ่ม / แก้ไข / ลบ** ได้ผ่านปุ่มและ modal
+- **Drag & Drop** เพื่อจัดเรียงลำดับใหม่
+- Favicon ดึงอัตโนมัติจาก **DuckDuckGo Favicon API** (`icons.duckduckgo.com`) — เจาะจงกว่าโลโก้แบรนด์แม่ ถ้าโหลดไม่ได้จะ fallback เป็นตัวอักษรแรกของชื่อ
+- เริ่มต้นเป็น **หน้าว่างเปล่า** ไม่มี Bookmark ตัวอย่างติดมาด้วย
 
-### ⚡ Command Palette
+### Categories (หมวดหมู่)
+- **เพิ่ม / ลบ / เปลี่ยนชื่อ** หมวดหมู่ได้ทั้งหมด ผ่านปุ่ม "หมวดหมู่" ข้างปุ่มเพิ่ม Bookmark
+- หมวด **"Other"** เป็นหมวด fallback ถาวร — ลบหรือเปลี่ยนชื่อไม่ได้
+- ลบหมวดหมู่ที่มี Bookmark อยู่ → Bookmark จะถูกย้ายไปที่ "Other" อัตโนมัติ ไม่มีข้อมูลหาย
+- แท็บกรองหมวดหมู่อยู่เหนือ Bookmark grid พร้อมตัวนับจำนวน
 
-* เปิดด้วย `Ctrl + K`
-* ค้นหา Bookmark อย่างรวดเร็ว
-* เปิดเว็บไซต์จากคีย์บอร์ดได้ทันที
-* รองรับ Navigation ด้วย Arrow Keys
+### Quick URL
+- วางลิงก์ในช่อง แล้วกด **Enter** หรือปุ่ม **+** เพื่อบันทึก
+- เพิ่มได้หลายรายการไม่จำกัด แสดงใหม่สุดไว้บนสุด
+- คลิกที่รายการเพื่อเปิดลิงก์ในแท็บใหม่ทันที, โฮเวอร์แล้วกด ✕ เพื่อลบ
 
-### 🌐 Quick URL
+### Command Palette (Ctrl+K)
+- ค้นหา Bookmark แบบเรียลไทม์ (ค้นจากชื่อ, URL, หมวดหมู่)
+- ใช้ลูกศร **↑ / ↓** เลือก, กด **Enter** เพื่อเปิด, **Esc** เพื่อปิด
+- ถ้าพิมพ์แล้วไม่เจอ Bookmark ที่ตรงกัน กด Enter จะค้นหาผ่าน Google แทน
 
-* วางลิงก์แล้วบันทึกได้ทันที
-* เปิดลิงก์ด้วยคลิกเดียว
-* จัดเก็บรายการลิงก์สำคัญแยกจาก Bookmark
+### Statistics Panel
+- จำนวน Bookmark ทั้งหมด
+- จำนวนหมวดหมู่
+- เวลาปัจจุบัน
+- จำนวน Quick URL ที่บันทึกไว้
 
-### 💾 Backup & Restore
+### Backup (Export / Import)
+- **Export**: ดาวน์โหลดข้อมูลทั้งหมด (Bookmark, หมวดหมู่, Quick URL) เป็นไฟล์ `.json` พร้อมวันที่ในชื่อไฟล์
+- **Import**: เลือกไฟล์ `.json` ที่เคย export ไว้เพื่อกู้คืน — มีการตรวจสอบโครงสร้างไฟล์และ popup ยืนยันก่อนแทนที่ข้อมูลเดิม
+- รองรับไฟล์ backup รุ่นเก่าที่ยังไม่มีฟีเจอร์ Quick URL (จะเติมค่าว่างให้อัตโนมัติ)
 
-* Export ข้อมูลทั้งหมดเป็นไฟล์ JSON
-* Import ข้อมูลกลับเข้าระบบ
-* สำรองข้อมูล Bookmark, Categories และ Quick URLs
+### รีเซ็ตข้อมูล
+- ปุ่ม "รีเซ็ตข้อมูลทั้งหมด" อยู่ใน Danger Zone ใต้พาเนล Backup
+- ต้องพิมพ์คำว่า **RESET** เพื่อยืนยัน ป้องกันการกดพลาด (ข้อมูลลบแล้วกู้คืนไม่ได้ถ้าไม่มีไฟล์ backup)
 
-### 📊 Dashboard Statistics
+### Background Animation
+- Canvas animation แบบ node network เบาๆ (constellation) ลอยตัวช้าๆ พร้อมเส้นเชื่อมจุดที่อยู่ใกล้กัน
+- จำกัดจำนวนอนุภาคและ devicePixelRatio เพื่อไม่ให้กินทรัพยากรเครื่อง
+- หยุดทำงานอัตโนมัติเมื่อสลับไปแท็บอื่น (`visibilitychange`)
+- เคารพการตั้งค่า `prefers-reduced-motion` ของระบบปฏิบัติการ (จะวาดเฟรมนิ่งเฟรมเดียวแทน)
 
-* จำนวน Bookmark ทั้งหมด
-* จำนวนหมวดหมู่
-* เวลาปัจจุบัน
-* จำนวน Quick URLs
+## การเก็บข้อมูล
 
-### 🕒 Live Clock
+ข้อมูลทั้งหมดเก็บใน **`localStorage`** ของเบราว์เซอร์ ภายใต้ key เดียว:
 
-* แสดงเวลาปัจจุบันแบบ Real-time
-* แสดงวันที่ภาษาไทย
-* Greeting เปลี่ยนตามช่วงเวลา
-
-### 🎨 Modern UI
-
-* Dark Theme
-* Responsive Design
-* Animated Background
-* Accessibility Support
-* Keyboard Shortcuts
-
----
-
-## Data Storage
-
-ข้อมูลทั้งหมดถูกจัดเก็บใน Local Storage ของ Browser
-
-Key ที่ใช้:
-
-```text
+```
 homepage_dashboard_v1
 ```
 
-โครงสร้างข้อมูล:
+โครงสร้างข้อมูล (โดยประมาณ):
 
 ```json
 {
-  "categories": [],
-  "bookmarks": [],
-  "quickUrls": [],
+  "categories": ["Other", "Study", "..."],
+  "bookmarks": [
+    { "id": "bm_...", "name": "Gmail", "url": "https://mail.google.com/", "category": "Other", "order": 0 }
+  ],
+  "quickUrls": [
+    { "id": "qu_...", "url": "https://example.com", "createdAt": 1234567890 }
+  ],
   "activeCategory": "all"
 }
 ```
 
----
-
-## Keyboard Shortcuts
-
-| Shortcut | Action                   |
-| -------- | ------------------------ |
-| Ctrl + K | เปิด/ปิด Command Palette |
-| Enter    | เปิด Bookmark ที่เลือก   |
-| Esc      | ปิด Modal หรือ Palette   |
-| ↑ ↓      | เลื่อนรายการใน Palette   |
-
----
-
-## Installation
-
-1. ดาวน์โหลดไฟล์ `index.html`
-2. เปิดด้วย Web Browser
-3. เริ่มใช้งานได้ทันที
-
-หรือรันผ่าน Local Server:
-
-```bash
-python -m http.server 8000
+**ดูข้อมูลตรงๆ ผ่าน Console:**
+```javascript
+JSON.parse(localStorage.getItem('homepage_dashboard_v1'))
 ```
 
-แล้วเปิด:
-
-```text
-http://localhost:8000
+**ลบข้อมูลทั้งหมดผ่าน Console** (แทนการกดปุ่มรีเซ็ตในแอป):
+```javascript
+localStorage.removeItem('homepage_dashboard_v1');
+location.reload();
 ```
 
----
+> ⚠️ ข้อมูลผูกกับ **origin ของไฟล์** — ถ้าย้ายไฟล์ไปเปิดจากตำแหน่งอื่น หรือเปิดผ่านเบราว์เซอร์/โปรไฟล์คนละตัว จะไม่เห็นข้อมูลเดิม เพราะ `localStorage` แยกตาม origin
 
-## Technologies Used
+## คีย์ลัด (Keyboard Shortcuts)
 
-* HTML5
-* CSS3
-* Vanilla JavaScript
-* LocalStorage API
-* Canvas API
+| คีย์ | การทำงาน |
+|---|---|
+| `Ctrl+K` / `Cmd+K` | เปิด/ปิด Command Palette |
+| `Enter` (ในช่องค้นหา) | ค้นหาผ่าน Google หรือเปิด URL |
+| `↑` `↓` (ใน Command Palette) | เลื่อนเลือกรายการ |
+| `Enter` (ใน Command Palette) | เปิดลิงก์ที่เลือก |
+| `Esc` | ปิด modal / palette ที่เปิดอยู่ |
 
----
+## ข้อจำกัดที่รู้อยู่แล้ว
 
-## Browser Support
+- **ไม่สามารถดึงชื่อโปรไฟล์เบราว์เซอร์มาแสดงได้** เพราะเป็นข้อมูลระดับ OS ที่ JavaScript หน้าเว็บเข้าถึงไม่ได้ ด้วยเหตุผลด้านความเป็นส่วนตัว/ความปลอดภัย
+- Favicon และ Google Search ต้องใช้อินเทอร์เน็ต — ส่วนอื่นทั้งหมดทำงาน offline ได้
+- ข้อมูลไม่ sync ข้ามเครื่อง/เบราว์เซอร์ (เพราะเก็บใน localStorage) — ใช้ฟีเจอร์ Export/Import เพื่อย้ายข้อมูลเอง
 
-* Google Chrome
-* Microsoft Edge
-* Mozilla Firefox
-* Brave
-* Opera
+## โครงสร้างไฟล์
 
----
+```
+index.html   ← ไฟล์เดียวจบ (HTML + CSS + JavaScript ทั้งหมดอยู่ในนี้)
+```
 
-## License
-
-This project is provided for personal and educational use.
+ไม่มี dependency ภายนอก ไม่มี build step ไม่ต้องใช้ npm/node — เปิดไฟล์ในเบราว์เซอร์ได้ทันที
