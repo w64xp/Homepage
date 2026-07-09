@@ -1,0 +1,2028 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Homepage — Personal Dashboard</title>
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   Base: deep charcoal/navy "instrument panel" dark theme
+   Accent: warm amber/brass (like a dial light)
+   Type: humanist sans for UI, monospace for data/time
+   ============================================================ */
+:root{
+  --bg-0:#0b0d10;          /* deepest background */
+  --bg-1:#12151a;          /* panel background */
+  --bg-2:#181c22;          /* card background */
+  --bg-3:#20252c;          /* hover / raised */
+  --line:#262b33;          /* hairline borders */
+  --line-soft:#1b1f25;
+  --text-hi:#eef0f2;       /* primary text */
+  --text-mid:#9aa3ad;      /* secondary text */
+  --text-low:#5c6470;      /* tertiary text */
+  --amber:#e0a458;         /* signature accent */
+  --amber-dim:#8a6a3f;
+  --amber-glow:rgba(224,164,88,0.18);
+  --danger:#c2604f;
+  --ok:#6fa287;
+  --radius-l:18px;
+  --radius-m:12px;
+  --radius-s:8px;
+  --font-ui: 'Segoe UI', system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --ease: cubic-bezier(.22,.61,.36,1);
+}
+
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg-0);
+  color:var(--text-hi);
+  font-family:var(--font-ui);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* Respect reduced motion preference across the whole page */
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+}
+
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;}
+
+/* Visible focus ring for accessibility */
+:focus-visible{
+  outline:2px solid var(--amber);
+  outline-offset:2px;
+  border-radius:4px;
+}
+
+/* ============================================================
+   BACKGROUND ANIMATION — signature element
+   A quiet canvas of drifting nodes with faint connecting lines,
+   like a constellation / instrument-panel readout.
+   Lightweight: <60 particles, capped devicePixelRatio, pauses
+   when tab is hidden to save resources.
+   ============================================================ */
+#bg-canvas{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  opacity:0.55;
+}
+.bg-vignette{
+  position:fixed;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(224,164,88,0.06), transparent 60%),
+    radial-gradient(ellipse at 100% 100%, rgba(90,110,140,0.05), transparent 55%),
+    linear-gradient(180deg, transparent 0%, var(--bg-0) 100%);
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.wrap{
+  position:relative;
+  z-index:2;
+  max-width:1180px;
+  margin:0 auto;
+  padding:28px 24px 80px;
+}
+
+/* ---------- Header ---------- */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:20px;
+  padding:8px 4px 32px;
+  flex-wrap:wrap;
+}
+.header .brand{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.brand-eyebrow{
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--amber-dim);
+}
+.brand-title{
+  font-size:26px;
+  font-weight:600;
+  letter-spacing:-.01em;
+  color:var(--text-hi);
+}
+.brand-greeting{
+  font-size:14px;
+  color:var(--text-mid);
+  margin-top:2px;
+}
+.header .clock{
+  text-align:right;
+  font-family:var(--font-mono);
+}
+.clock-time{
+  font-size:34px;
+  font-weight:600;
+  color:var(--text-hi);
+  letter-spacing:.01em;
+  line-height:1;
+}
+.clock-time .sec{
+  color:var(--amber);
+  font-size:20px;
+}
+.clock-date{
+  margin-top:6px;
+  font-size:13px;
+  color:var(--text-mid);
+}
+
+/* ---------- Search ---------- */
+.search-section{
+  margin-bottom:34px;
+}
+.search-box{
+  position:relative;
+  display:flex;
+  align-items:center;
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius-l);
+  padding:6px 8px 6px 20px;
+  transition:border-color .25s var(--ease), box-shadow .25s var(--ease);
+}
+.search-box:focus-within{
+  border-color:var(--amber-dim);
+  box-shadow:0 0 0 4px var(--amber-glow);
+}
+.search-icon{
+  flex:0 0 auto;
+  color:var(--text-low);
+  margin-right:14px;
+}
+.search-input{
+  flex:1;
+  background:transparent;
+  border:none;
+  outline:none;
+  color:var(--text-hi);
+  font-size:17px;
+  padding:14px 0;
+  font-family:var(--font-ui);
+}
+.search-input::placeholder{color:var(--text-low);}
+.kbd-hint{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--text-low);
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:var(--radius-s);
+  padding:5px 9px;
+  margin-right:6px;
+  white-space:nowrap;
+}
+
+/* ---------- Section headers ---------- */
+.section-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:0 4px 14px;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.section-heading h2{
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-mid);
+  margin:0;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.section-heading h2::before{
+  content:"";
+  width:6px;height:6px;border-radius:50%;
+  background:var(--amber);
+  box-shadow:0 0 8px var(--amber-glow);
+}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+  border:1px solid var(--line);
+  background:var(--bg-2);
+  color:var(--text-hi);
+  padding:9px 14px;
+  border-radius:var(--radius-s);
+  font-size:13px;
+  font-weight:500;
+  transition:background .2s var(--ease), border-color .2s var(--ease), transform .15s var(--ease);
+}
+.btn:hover{background:var(--bg-3); border-color:#33393f;}
+.btn:active{transform:scale(0.97);}
+.btn-primary{
+  background:var(--amber);
+  border-color:var(--amber);
+  color:#211505;
+  font-weight:600;
+}
+.btn-primary:hover{background:#eab372; border-color:#eab372;}
+.btn-icon-only{padding:9px;}
+.btn-danger:hover{background:rgba(194,96,79,0.15); border-color:var(--danger); color:#e39284;}
+
+/* ---------- Main grid: bookmarks (left) + sidebar (right) ---------- */
+.main-grid{
+  display:grid;
+  grid-template-columns: 1fr 320px;
+  gap:28px;
+  align-items:start;
+}
+@media (max-width: 900px){
+  .main-grid{grid-template-columns: 1fr;}
+}
+
+/* ---------- Category tabs ---------- */
+.cat-tabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:0 4px 18px;
+}
+.cat-tab{
+  padding:7px 14px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--bg-1);
+  color:var(--text-mid);
+  font-size:13px;
+  cursor:pointer;
+  transition:all .2s var(--ease);
+  user-select:none;
+}
+.cat-tab:hover{border-color:var(--amber-dim); color:var(--text-hi);}
+.cat-tab.active{
+  background:var(--amber-glow);
+  border-color:var(--amber-dim);
+  color:var(--amber);
+  font-weight:600;
+}
+.cat-tab .count{
+  opacity:.65;
+  margin-left:5px;
+  font-family:var(--font-mono);
+  font-size:11px;
+}
+
+/* ---------- Bookmark grid ---------- */
+.bookmark-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap:14px;
+}
+.bm-card{
+  position:relative;
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius-m);
+  padding:16px 14px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  text-align:center;
+  cursor:grab;
+  transition:transform .18s var(--ease), border-color .18s var(--ease), background .18s var(--ease);
+  animation: card-in .35s var(--ease) both;
+}
+@keyframes card-in{
+  from{opacity:0; transform:translateY(6px);}
+  to{opacity:1; transform:translateY(0);}
+}
+.bm-card:hover{
+  border-color:var(--amber-dim);
+  background:var(--bg-2);
+  transform:translateY(-3px);
+}
+.bm-card.dragging{
+  opacity:.4;
+  cursor:grabbing;
+}
+.bm-card.drag-over{
+  border-color:var(--amber);
+  box-shadow:0 0 0 3px var(--amber-glow);
+}
+.bm-favicon{
+  width:32px;height:32px;
+  border-radius:8px;
+  background:var(--bg-3);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  flex:0 0 auto;
+}
+.bm-favicon img{width:20px;height:20px;object-fit:contain;}
+.bm-name{
+  font-size:13px;
+  font-weight:500;
+  color:var(--text-hi);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+}
+.bm-cat-label{
+  font-size:10px;
+  color:var(--text-low);
+  font-family:var(--font-mono);
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.bm-actions{
+  position:absolute;
+  top:6px; right:6px;
+  display:flex;
+  gap:4px;
+  opacity:0;
+  transition:opacity .15s var(--ease);
+}
+.bm-card:hover .bm-actions, .bm-card:focus-within .bm-actions{opacity:1;}
+.bm-action-btn{
+  width:22px;height:22px;
+  border-radius:6px;
+  border:none;
+  background:var(--bg-3);
+  color:var(--text-mid);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  font-size:12px;
+}
+.bm-action-btn:hover{background:var(--danger); color:#fff;}
+.bm-action-btn.edit-btn:hover{background:var(--amber); color:#211505;}
+
+.bm-add-card{
+  border-style:dashed;
+  color:var(--text-low);
+  cursor:pointer;
+  min-height:96px;
+  justify-content:center;
+}
+.bm-add-card:hover{color:var(--amber); border-color:var(--amber-dim);}
+.bm-add-card .plus{font-size:22px; line-height:1;}
+
+.empty-state{
+  grid-column:1/-1;
+  text-align:center;
+  padding:40px 20px;
+  color:var(--text-low);
+  font-size:13px;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+}
+.panel{
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius-l);
+  padding:18px;
+}
+.panel-title{
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--text-mid);
+  margin:0 0 14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* Stats */
+.stats-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.stat-item{
+  background:var(--bg-2);
+  border:1px solid var(--line-soft);
+  border-radius:var(--radius-s);
+  padding:12px;
+}
+.stat-value{
+  font-family:var(--font-mono);
+  font-size:22px;
+  font-weight:600;
+  color:var(--amber);
+  line-height:1.1;
+}
+.stat-label{
+  font-size:11px;
+  color:var(--text-low);
+  margin-top:4px;
+}
+
+/* Quick URL — paste-and-save link list */
+.quick-url-form{
+  display:flex;
+  gap:8px;
+}
+.quick-url-input{
+  flex:1;
+  min-width:0;
+  background:var(--bg-2);
+  border:1px solid var(--line-soft);
+  color:var(--text-hi);
+  font-family:var(--font-ui);
+  font-size:13.5px;
+  padding:10px 12px;
+  border-radius:var(--radius-s);
+  outline:none;
+  transition:border-color .2s var(--ease);
+}
+.quick-url-input:focus{border-color:var(--amber-dim);}
+.quick-url-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:12px;
+  max-height:280px;
+  overflow-y:auto;
+}
+.quick-url-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:var(--bg-2);
+  border:1px solid var(--line-soft);
+  border-radius:var(--radius-s);
+  padding:9px 10px;
+  cursor:pointer;
+  transition:border-color .18s var(--ease), background .18s var(--ease);
+}
+.quick-url-item:hover{border-color:var(--amber-dim); background:var(--bg-3);}
+.quick-url-favicon{
+  width:20px;height:20px;
+  border-radius:5px;
+  background:var(--bg-3);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  flex:0 0 auto;
+}
+.quick-url-favicon img{width:13px;height:13px;object-fit:contain;}
+.quick-url-text{
+  flex:1;
+  min-width:0;
+  font-size:13px;
+  color:var(--text-hi);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.quick-url-delete{
+  flex:0 0 auto;
+  width:22px;height:22px;
+  border-radius:6px;
+  border:none;
+  background:transparent;
+  color:var(--text-low);
+  cursor:pointer;
+  font-size:12px;
+  opacity:0;
+  transition:opacity .15s var(--ease), background .15s var(--ease), color .15s var(--ease);
+}
+.quick-url-item:hover .quick-url-delete{opacity:1;}
+.quick-url-delete:hover{background:var(--danger); color:#fff;}
+.quick-url-empty{
+  text-align:center;
+  color:var(--text-low);
+  font-size:12px;
+  padding:20px 8px;
+}
+
+/* Backup panel — export/import row */
+.backup-row{
+  display:flex;
+  gap:8px;
+}
+.backup-row .btn{flex:1; justify-content:center;}
+.backup-hint{
+  margin-top:10px;
+  font-size:11px;
+  color:var(--text-low);
+  line-height:1.5;
+}
+.danger-zone{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid var(--line-soft);
+}
+.btn-full-danger{
+  width:100%;
+  justify-content:center;
+  color:var(--danger);
+  border-color:rgba(194,96,79,0.35);
+}
+.btn-full-danger:hover{
+  background:rgba(194,96,79,0.15);
+  border-color:var(--danger);
+  color:#e39284;
+}
+
+/* ============================================================
+   MODAL (Add/Edit bookmark)
+   ============================================================ */
+.modal-overlay{
+  position:fixed; inset:0;
+  background:rgba(6,7,9,0.65);
+  backdrop-filter:blur(3px);
+  display:flex; align-items:center; justify-content:center;
+  z-index:100;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .2s var(--ease);
+  padding:20px;
+}
+.modal-overlay.open{opacity:1; pointer-events:auto;}
+.modal{
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius-l);
+  padding:24px;
+  width:100%;
+  max-width:400px;
+  transform:translateY(10px) scale(.98);
+  transition:transform .2s var(--ease);
+}
+.modal-overlay.open .modal{transform:translateY(0) scale(1);}
+.modal h3{margin:0 0 18px; font-size:16px; font-weight:600;}
+.field{margin-bottom:14px;}
+.field label{
+  display:block;
+  font-size:12px;
+  color:var(--text-mid);
+  margin-bottom:6px;
+}
+.field input, .field select{
+  width:100%;
+  background:var(--bg-2);
+  border:1px solid var(--line-soft);
+  color:var(--text-hi);
+  padding:10px 12px;
+  border-radius:var(--radius-s);
+  font-size:14px;
+  outline:none;
+  font-family:inherit;
+  transition:border-color .2s var(--ease);
+}
+.field input:focus, .field select:focus{border-color:var(--amber-dim);}
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:20px;
+}
+
+/* Category management list rows */
+.cat-manage-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  background:var(--bg-2);
+  border:1px solid var(--line-soft);
+  border-radius:var(--radius-s);
+  padding:8px 10px 8px 12px;
+}
+.cat-manage-item .cat-manage-name-group{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex:1;
+  min-width:0;
+}
+.cat-manage-item .cat-manage-name{
+  font-size:13.5px;
+  color:var(--text-hi);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.cat-manage-item .cat-manage-name-input{
+  flex:1;
+  min-width:0;
+  background:var(--bg-3);
+  border:1px solid var(--amber-dim);
+  color:var(--text-hi);
+  font-size:13.5px;
+  font-family:inherit;
+  padding:5px 8px;
+  border-radius:6px;
+  outline:none;
+}
+.cat-manage-item .cat-manage-count{
+  font-size:11px;
+  color:var(--text-low);
+  font-family:var(--font-mono);
+  flex:0 0 auto;
+}
+.cat-manage-item .cat-manage-actions{
+  display:flex;
+  gap:6px;
+  flex:0 0 auto;
+}
+.cat-manage-item .cat-manage-btn{
+  width:24px;height:24px;
+  border-radius:6px;
+  border:none;
+  background:var(--bg-3);
+  color:var(--text-mid);
+  cursor:pointer;
+  font-size:12px;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.cat-manage-item .cat-manage-btn.rename-btn:hover{background:var(--amber); color:#211505;}
+.cat-manage-item .cat-manage-btn.delete-btn:hover{background:var(--danger); color:#fff;}
+.cat-manage-item .cat-manage-btn:disabled{
+  opacity:.3;
+  cursor:not-allowed;
+}
+
+/* ============================================================
+   COMMAND PALETTE (Ctrl+K)
+   ============================================================ */
+.palette-overlay{
+  position:fixed; inset:0;
+  background:rgba(6,7,9,0.7);
+  backdrop-filter:blur(3px);
+  z-index:200;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  padding-top:12vh;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s var(--ease);
+}
+.palette-overlay.open{opacity:1; pointer-events:auto;}
+.palette{
+  width:100%;
+  max-width:560px;
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  border-radius:var(--radius-l);
+  overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+  transform:translateY(-8px);
+  transition:transform .2s var(--ease);
+}
+.palette-overlay.open .palette{transform:translateY(0);}
+.palette-input-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:16px 18px;
+  border-bottom:1px solid var(--line);
+}
+.palette-input-row svg{flex:0 0 auto; color:var(--text-low);}
+#palette-input{
+  flex:1;
+  background:transparent;
+  border:none;
+  outline:none;
+  color:var(--text-hi);
+  font-size:16px;
+}
+#palette-input::placeholder{color:var(--text-low);}
+.palette-results{
+  max-height:340px;
+  overflow-y:auto;
+  padding:8px;
+}
+.palette-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:var(--radius-s);
+  cursor:pointer;
+}
+.palette-item.active, .palette-item:hover{background:var(--bg-3);}
+.palette-item .pf{
+  width:22px;height:22px;border-radius:6px;background:var(--bg-2);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;overflow:hidden;
+}
+.palette-item .pf img{width:14px;height:14px;}
+.palette-item .pname{font-size:13.5px; color:var(--text-hi);}
+.palette-item .purl{font-size:11px; color:var(--text-low); margin-left:auto; font-family:var(--font-mono);}
+.palette-empty{padding:24px; text-align:center; color:var(--text-low); font-size:13px;}
+.palette-footer{
+  display:flex;
+  gap:16px;
+  padding:10px 18px;
+  border-top:1px solid var(--line);
+  font-size:11px;
+  color:var(--text-low);
+  font-family:var(--font-mono);
+}
+.palette-footer span{display:flex;align-items:center;gap:5px;}
+.palette-footer kbd{
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:1px 5px;
+}
+
+/* ---------- Toast ---------- */
+.toast{
+  position:fixed;
+  bottom:24px; left:50%;
+  transform:translate(-50%, 20px);
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  color:var(--text-hi);
+  padding:12px 20px;
+  border-radius:var(--radius-m);
+  font-size:13px;
+  opacity:0;
+  pointer-events:none;
+  transition:all .25s var(--ease);
+  z-index:300;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+.toast.show{opacity:1; transform:translate(-50%, 0);}
+
+/* ---------- Screen-reader only text ---------- */
+.sr-only{
+  position:absolute; width:1px; height:1px;
+  padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+
+/* ---------- Scrollbars (subtle) ---------- */
+::-webkit-scrollbar{width:8px; height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:var(--amber-dim);}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 560px){
+  .header{flex-direction:column;}
+  .header .clock{text-align:left;}
+  .brand-title{font-size:22px;}
+  .clock-time{font-size:28px;}
+  .wrap{padding:18px 14px 60px;}
+  .search-input{font-size:15px;}
+  .kbd-hint{display:none;}
+  .bookmark-grid{grid-template-columns:repeat(auto-fill, minmax(120px,1fr));}
+}
+</style>
+</head>
+<body>
+
+<!-- Signature background: quiet animated node network -->
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
+<div class="bg-vignette" aria-hidden="true"></div>
+
+<div class="wrap">
+
+  <!-- =========================================================
+       1. HEADER — dashboard title, greeting, live clock
+  ========================================================== -->
+  <header class="header">
+    <div class="brand">
+      <span class="brand-eyebrow">Personal Dashboard</span>
+      <h1 class="brand-title">แผงควบคุมของฉัน</h1>
+      <p class="brand-greeting" id="greeting-text">กำลังโหลด...</p>
+    </div>
+    <div class="clock" aria-live="off">
+      <div class="clock-time" id="clock-time">--:--<span class="sec">:--</span></div>
+      <div class="clock-date" id="clock-date">-</div>
+    </div>
+  </header>
+
+  <!-- =========================================================
+       2. UNIVERSAL SEARCH
+  ========================================================== -->
+  <section class="search-section">
+    <form class="search-box" id="search-form" role="search">
+      <span class="search-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </span>
+      <label for="search-input" class="sr-only">ค้นหาผ่าน Google</label>
+      <input type="text" id="search-input" class="search-input" placeholder="ค้นหาด้วย Google หรือพิมพ์ URL..." autocomplete="off">
+      <span class="kbd-hint" aria-hidden="true">Ctrl K เพื่อโฟกัส</span>
+    </form>
+  </section>
+
+  <div class="main-grid">
+    <!-- =========================================================
+         LEFT: BOOKMARK MANAGER
+    ========================================================== -->
+    <section>
+      <div class="section-heading">
+        <h2>Bookmarks</h2>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" id="manage-cat-btn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            หมวดหมู่
+          </button>
+          <button class="btn btn-primary" id="add-bookmark-btn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+            เพิ่ม Bookmark
+          </button>
+        </div>
+      </div>
+
+      <!-- Category filter tabs -->
+      <div class="cat-tabs" id="cat-tabs" role="tablist" aria-label="หมวดหมู่ Bookmark"></div>
+
+      <!-- Bookmark card grid (drag & drop enabled) -->
+      <div class="bookmark-grid" id="bookmark-grid" aria-live="polite"></div>
+    </section>
+
+    <!-- =========================================================
+         RIGHT: SIDEBAR — Stats + Quick URL
+    ========================================================== -->
+    <aside class="sidebar">
+
+      <!-- 8. Statistics Panel -->
+      <div class="panel">
+        <h3 class="panel-title">สถิติ</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-bookmarks">0</div>
+            <div class="stat-label">Bookmark ทั้งหมด</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-categories">0</div>
+            <div class="stat-label">หมวดหมู่</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-time">--:--</div>
+            <div class="stat-label">เวลาปัจจุบัน</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-quick-urls">0</div>
+            <div class="stat-label">Quick URL</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Quick URL — paste a link, save it, click to open. Add many. -->
+      <div class="panel">
+        <h3 class="panel-title">Quick URL</h3>
+        <form id="quick-url-form" class="quick-url-form">
+          <label for="quick-url-input" class="sr-only">วาง URL เพื่อบันทึก</label>
+          <input type="text" id="quick-url-input" class="quick-url-input" placeholder="วางลิงก์ที่นี่แล้วกด Enter..." autocomplete="off">
+          <button type="submit" class="btn btn-primary btn-icon-only" aria-label="บันทึกลิงก์">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </button>
+        </form>
+        <div id="quick-url-list" class="quick-url-list"></div>
+      </div>
+
+      <!-- Backup / Restore — export & import all data as JSON -->
+      <div class="panel">
+        <h3 class="panel-title">Backup</h3>
+        <div class="backup-row">
+          <button type="button" class="btn" id="export-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export
+          </button>
+          <button type="button" class="btn" id="import-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 0l-4 4m4-4l4 4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Import
+          </button>
+        </div>
+        <input type="file" id="import-file-input" accept="application/json,.json" class="sr-only" aria-hidden="true">
+        <p class="backup-hint">Export ข้อมูลทั้งหมด (Bookmark, หมวดหมู่, Quick URL) เป็นไฟล์ .json สำรอง หรือ Import กลับเพื่อกู้คืน</p>
+
+        <div class="danger-zone">
+          <button type="button" class="btn btn-full-danger" id="reset-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            รีเซ็ตข้อมูลทั้งหมด
+          </button>
+          <p class="backup-hint">ลบ Bookmark, หมวดหมู่ และ Notes ทั้งหมด แล้วกลับไปใช้ค่าเริ่มต้น — แนะนำให้ Export สำรองไว้ก่อน</p>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+</div>
+
+<!-- =========================================================
+     MODAL: Add / Edit Bookmark
+========================================================== -->
+<div class="modal-overlay" id="bm-modal-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bm-modal-title">
+    <h3 id="bm-modal-title">เพิ่ม Bookmark</h3>
+    <form id="bm-form">
+      <div class="field">
+        <label for="bm-name-input">ชื่อ</label>
+        <input type="text" id="bm-name-input" required placeholder="เช่น Gmail">
+      </div>
+      <div class="field">
+        <label for="bm-url-input">URL</label>
+        <input type="url" id="bm-url-input" required placeholder="https://example.com">
+      </div>
+      <div class="field">
+        <label for="bm-cat-input">หมวดหมู่</label>
+        <select id="bm-cat-input"></select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="bm-cancel-btn">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary" id="bm-save-btn">บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================
+     MODAL: Manage Categories — add new / delete existing
+========================================================== -->
+<div class="modal-overlay" id="cat-modal-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title">
+    <h3 id="cat-modal-title">จัดการหมวดหมู่</h3>
+
+    <div class="field">
+      <label for="new-cat-input">เพิ่มหมวดหมู่ใหม่</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="new-cat-input" placeholder="เช่น Finance" style="flex:1;">
+        <button type="button" class="btn btn-primary" id="add-cat-btn">เพิ่ม</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>หมวดหมู่ทั้งหมด</label>
+      <div id="cat-manage-list" style="display:flex; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto;"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="cat-modal-close-btn">เสร็จสิ้น</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     COMMAND PALETTE (Ctrl+K)
+========================================================== -->
+<div class="palette-overlay" id="palette-overlay">
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Command Palette">
+    <div class="palette-input-row">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="text" id="palette-input" placeholder="ค้นหา Bookmark หรือคำสั่ง..." autocomplete="off">
+    </div>
+    <div class="palette-results" id="palette-results"></div>
+    <div class="palette-footer">
+      <span><kbd>↑↓</kbd> เลือก</span>
+      <span><kbd>Enter</kbd> เปิด</span>
+      <span><kbd>Esc</kbd> ปิด</span>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   STATE & STORAGE
+   All persistent data lives in localStorage under a single
+   namespaced key so it's easy to inspect / migrate.
+   ================================================================ */
+const STORAGE_KEY = 'homepage_dashboard_v1';
+
+const DEFAULT_CATEGORIES = ['Other'];
+
+// No default bookmarks — the dashboard starts empty and the user adds their own.
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      // Basic shape validation with graceful fallback
+      if(parsed && Array.isArray(parsed.bookmarks) && Array.isArray(parsed.categories)){
+        return parsed;
+      }
+    }
+  }catch(e){
+    console.warn('ไม่สามารถอ่านข้อมูลจาก localStorage ได้ ใช้ค่าเริ่มต้นแทน', e);
+  }
+  // First run / corrupted data -> build fresh default state (empty bookmarks)
+  return {
+    categories: [...DEFAULT_CATEGORIES],
+    bookmarks: [],
+    quickUrls: [],
+    activeCategory: 'all'
+  };
+}
+
+let state = loadState();
+
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){
+    console.error('บันทึกข้อมูลไม่สำเร็จ (localStorage อาจเต็มหรือถูกปิดใช้งาน)', e);
+    showToast('บันทึกข้อมูลไม่สำเร็จ');
+  }
+}
+
+/* ================================================================
+   TOAST helper
+   ================================================================ */
+let toastTimer = null;
+function showToast(msg){
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+/* ================================================================
+   1. HEADER — real-time clock + date + greeting
+   ================================================================ */
+const THAI_DAYS = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+function pad(n){ return n.toString().padStart(2, '0'); }
+
+function updateClock(){
+  const now = new Date();
+  const h = pad(now.getHours());
+  const m = pad(now.getMinutes());
+  const s = pad(now.getSeconds());
+
+  document.getElementById('clock-time').innerHTML = `${h}:${m}<span class="sec">:${s}</span>`;
+
+  const dateStr = `วัน${THAI_DAYS[now.getDay()]}ที่ ${now.getDate()} ${THAI_MONTHS[now.getMonth()]} ${now.getFullYear() + 543}`;
+  document.getElementById('clock-date').textContent = dateStr;
+  document.getElementById('stat-time').textContent = `${h}:${m}`;
+
+  // Greeting changes by time of day
+  const hour = now.getHours();
+  let greeting;
+  if(hour < 5)       greeting = 'ยังไม่นอนอีกหรือ ดูแลสุขภาพด้วยนะ';
+  else if(hour < 12)  greeting = 'อรุณสวัสดิ์ วันนี้ก็ขอให้เป็นวันที่ดีนะ';
+  else if(hour < 17)  greeting = 'สวัสดีตอนบ่าย พักสายตาบ้างนะ';
+  else if(hour < 21)  greeting = 'สวัสดีตอนเย็น ใกล้จบวันแล้ว สู้ๆ';
+  else                greeting = 'สวัสดีตอนค่ำ อย่าลืมพักผ่อนด้วยนะ';
+  document.getElementById('greeting-text').textContent = greeting;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+/* ================================================================
+   2. UNIVERSAL SEARCH
+   - Plain query -> Google search
+   - Looks like a URL -> navigate directly
+   ================================================================ */
+const searchForm = document.getElementById('search-form');
+const searchInput = document.getElementById('search-input');
+
+function looksLikeUrl(str){
+  // crude but effective check: has a dot and no spaces, or starts with a protocol
+  return /^(https?:\/\/)/i.test(str) || (/\.[a-z]{2,}$/i.test(str.trim()) && !str.includes(' '));
+}
+
+searchForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const q = searchInput.value.trim();
+  if(!q) return;
+
+  if(looksLikeUrl(q)){
+    const url = /^https?:\/\//i.test(q) ? q : 'https://' + q;
+    window.open(url, '_blank', 'noopener');
+  } else {
+    const url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
+    window.open(url, '_blank', 'noopener');
+  }
+  searchInput.value = '';
+});
+
+/* Ctrl+K focuses the main search box (only handled globally below,
+   because Ctrl+K is also used to open the Command Palette — we open
+   the palette by default since it's the more powerful surface). */
+
+/* ================================================================
+   FAVICON helper
+   Uses Google's public favicon service for automatic favicons.
+   Falls back to a generated initial-letter badge on error.
+   ================================================================ */
+function getFaviconUrl(url){
+  try{
+    const u = new URL(url);
+    return `https://icons.duckduckgo.com/ip3/${u.hostname}.ico`;
+  }catch(e){
+    return '';
+  }
+}
+
+function faviconMarkup(bm){
+  const favUrl = getFaviconUrl(bm.url);
+  const letter = (bm.name || '?').trim().charAt(0).toUpperCase();
+  if(favUrl){
+    return `<img src="${favUrl}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${letter}',style:'font-weight:700;color:var(--text-mid);font-size:14px;'}))">`;
+  }
+  return `<span style="font-weight:700;color:var(--text-mid);font-size:14px;">${letter}</span>`;
+}
+
+/* ================================================================
+   3-5. BOOKMARK MANAGER + CATEGORIES
+   ================================================================ */
+const bookmarkGrid = document.getElementById('bookmark-grid');
+const catTabsEl = document.getElementById('cat-tabs');
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderCategoryTabs(){
+  const counts = {};
+  state.bookmarks.forEach(b => { counts[b.category] = (counts[b.category] || 0) + 1; });
+
+  let html = `<button type="button" class="cat-tab ${state.activeCategory === 'all' ? 'active' : ''}" data-cat="all" role="tab">
+      ทั้งหมด <span class="count">${state.bookmarks.length}</span>
+    </button>`;
+
+  state.categories.forEach(cat => {
+    html += `<button type="button" class="cat-tab ${state.activeCategory === cat ? 'active' : ''}" data-cat="${escapeHtml(cat)}" role="tab">
+        ${escapeHtml(cat)} <span class="count">${counts[cat] || 0}</span>
+      </button>`;
+  });
+
+  catTabsEl.innerHTML = html;
+
+  catTabsEl.querySelectorAll('.cat-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      state.activeCategory = tab.dataset.cat;
+      saveState();
+      renderCategoryTabs();
+      renderBookmarks();
+    });
+  });
+}
+
+let dragSourceId = null;
+
+/* ================================================================
+   CATEGORY MANAGEMENT — add / delete categories.
+   "Other" is the permanent fallback category: it can't be deleted,
+   and any bookmarks in a deleted category are moved into it so
+   nothing ever gets silently lost.
+   ================================================================ */
+const FALLBACK_CATEGORY = 'Other';
+const catModalOverlay = document.getElementById('cat-modal-overlay');
+const manageCatBtn = document.getElementById('manage-cat-btn');
+const newCatInput = document.getElementById('new-cat-input');
+const addCatBtn = document.getElementById('add-cat-btn');
+const catManageList = document.getElementById('cat-manage-list');
+const catModalCloseBtn = document.getElementById('cat-modal-close-btn');
+
+function ensureFallbackCategoryExists(){
+  if(!state.categories.includes(FALLBACK_CATEGORY)){
+    state.categories.push(FALLBACK_CATEGORY);
+  }
+}
+
+function openCategoryModal(){
+  ensureFallbackCategoryExists();
+  newCatInput.value = '';
+  renamingCategory = null;
+  renderCategoryManageList();
+  catModalOverlay.classList.add('open');
+  setTimeout(() => newCatInput.focus(), 50);
+}
+function closeCategoryModal(){
+  renamingCategory = null;
+  catModalOverlay.classList.remove('open');
+}
+
+let renamingCategory = null; // tracks which category is currently in "editing name" mode
+
+function renderCategoryManageList(){
+  const counts = {};
+  state.bookmarks.forEach(b => { counts[b.category] = (counts[b.category] || 0) + 1; });
+
+  catManageList.innerHTML = state.categories.map(cat => {
+    const isFallback = cat === FALLBACK_CATEGORY;
+    const isRenaming = renamingCategory === cat;
+
+    const nameMarkup = isRenaming
+      ? `<input type="text" class="cat-manage-name-input" data-cat="${escapeHtml(cat)}" value="${escapeHtml(cat)}">`
+      : `<span class="cat-manage-name">${escapeHtml(cat)}</span>
+         <span class="cat-manage-count">${counts[cat] || 0} bookmark</span>`;
+
+    return `
+      <div class="cat-manage-item">
+        <span class="cat-manage-name-group">${nameMarkup}</span>
+        <span class="cat-manage-actions">
+          ${isRenaming
+            ? `<button type="button" class="cat-manage-btn rename-btn" data-action="confirm-rename" data-cat="${escapeHtml(cat)}" title="บันทึกชื่อใหม่">✓</button>`
+            : `<button type="button" class="cat-manage-btn rename-btn" data-action="rename" data-cat="${escapeHtml(cat)}" title="แก้ไขชื่อหมวดหมู่">✎</button>`
+          }
+          <button type="button" class="cat-manage-btn delete-btn" data-action="delete" data-cat="${escapeHtml(cat)}"
+            ${isFallback ? 'disabled title="หมวดหมู่นี้ลบไม่ได้ ใช้เป็นค่าเริ่มต้นเสมอ"' : 'title="ลบหมวดหมู่นี้"'}>
+            ✕
+          </button>
+        </span>
+      </div>`;
+  }).join('');
+
+  // Rename: start editing
+  catManageList.querySelectorAll('[data-action="rename"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      renamingCategory = btn.dataset.cat;
+      renderCategoryManageList();
+      const input = catManageList.querySelector('.cat-manage-name-input');
+      if(input){ input.focus(); input.select(); }
+    });
+  });
+
+  // Rename: confirm via checkmark button
+  catManageList.querySelectorAll('[data-action="confirm-rename"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = catManageList.querySelector('.cat-manage-name-input');
+      if(input) commitCategoryRename(btn.dataset.cat, input.value);
+    });
+  });
+
+  // Rename: input keyboard handling (Enter to save, Escape to cancel)
+  const nameInput = catManageList.querySelector('.cat-manage-name-input');
+  if(nameInput){
+    nameInput.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){ e.preventDefault(); commitCategoryRename(nameInput.dataset.cat, nameInput.value); }
+      else if(e.key === 'Escape'){ e.preventDefault(); renamingCategory = null; renderCategoryManageList(); }
+    });
+    // Clicking away also saves, so the user isn't forced to hit the checkmark
+    nameInput.addEventListener('blur', () => {
+      // Small delay so a click on the checkmark button isn't cancelled by blur first
+      setTimeout(() => {
+        if(renamingCategory === nameInput.dataset.cat) commitCategoryRename(nameInput.dataset.cat, nameInput.value);
+      }, 120);
+    });
+  }
+
+  // Delete
+  catManageList.querySelectorAll('[data-action="delete"]:not(:disabled)').forEach(btn => {
+    btn.addEventListener('click', () => deleteCategory(btn.dataset.cat));
+  });
+}
+
+function commitCategoryRename(oldName, newNameRaw){
+  const newName = (newNameRaw || '').trim();
+  renamingCategory = null;
+
+  if(!newName || newName === oldName){
+    renderCategoryManageList();
+    return;
+  }
+
+  // Prevent renaming to a name that already exists (case-insensitive), unless it's the fallback being protected
+  const clash = state.categories.some(c => c.toLowerCase() === newName.toLowerCase() && c !== oldName);
+  if(clash){
+    showToast('มีหมวดหมู่ชื่อนี้อยู่แล้ว');
+    renderCategoryManageList();
+    return;
+  }
+
+  // "Other" is the permanent fallback name and can't be renamed away
+  if(oldName === FALLBACK_CATEGORY){
+    showToast('ไม่สามารถเปลี่ยนชื่อหมวดหมู่นี้ได้');
+    renderCategoryManageList();
+    return;
+  }
+
+  // Update the category list and every bookmark pointing at the old name
+  state.categories = state.categories.map(c => c === oldName ? newName : c);
+  state.bookmarks.forEach(b => { if(b.category === oldName) b.category = newName; });
+  if(state.activeCategory === oldName) state.activeCategory = newName;
+
+  saveState();
+  renderCategoryManageList();
+  renderCategoryTabs();
+  renderBookmarks();
+  showToast(`เปลี่ยนชื่อเป็น "${newName}" แล้ว`);
+}
+
+function deleteCategory(cat){
+  if(cat === FALLBACK_CATEGORY) return;
+
+  const affected = state.bookmarks.filter(b => b.category === cat).length;
+  const msg = affected > 0
+    ? `หมวดหมู่ "${cat}" มี ${affected} bookmark — ลบหมวดหมู่นี้แล้ว bookmark เหล่านั้นจะย้ายไปที่ "${FALLBACK_CATEGORY}" ต้องการดำเนินการต่อหรือไม่?`
+    : `ต้องการลบหมวดหมู่ "${cat}" ใช่หรือไม่?`;
+  if(!confirm(msg)) return;
+
+  // Reassign any bookmarks in the deleted category to the fallback
+  state.bookmarks.forEach(b => {
+    if(b.category === cat) b.category = FALLBACK_CATEGORY;
+  });
+  state.categories = state.categories.filter(c => c !== cat);
+
+  // If the deleted category was the active filter, fall back to "all"
+  if(state.activeCategory === cat) state.activeCategory = 'all';
+
+  saveState();
+  renderCategoryManageList();
+  renderCategoryTabs();
+  renderBookmarks();
+  showToast(`ลบหมวดหมู่ "${cat}" แล้ว`);
+}
+
+addCatBtn.addEventListener('click', () => {
+  const name = newCatInput.value.trim();
+  if(!name) return;
+
+  if(state.categories.some(c => c.toLowerCase() === name.toLowerCase())){
+    showToast('มีหมวดหมู่นี้อยู่แล้ว');
+    return;
+  }
+
+  state.categories.push(name);
+  saveState();
+  newCatInput.value = '';
+  renderCategoryManageList();
+  renderCategoryTabs();
+  showToast(`เพิ่มหมวดหมู่ "${name}" แล้ว`);
+  newCatInput.focus();
+});
+
+newCatInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ e.preventDefault(); addCatBtn.click(); }
+});
+
+manageCatBtn.addEventListener('click', openCategoryModal);
+catModalCloseBtn.addEventListener('click', closeCategoryModal);
+catModalOverlay.addEventListener('click', (e) => { if(e.target === catModalOverlay) closeCategoryModal(); });
+
+
+function renderBookmarks(){
+  const filtered = state.bookmarks
+    .filter(b => state.activeCategory === 'all' || b.category === state.activeCategory)
+    .sort((a, b) => a.order - b.order);
+
+  if(filtered.length === 0){
+    bookmarkGrid.innerHTML = `<div class="empty-state">ยังไม่มี Bookmark ในหมวดหมู่นี้ — กดปุ่ม "เพิ่ม Bookmark" เพื่อเริ่มต้น</div>`;
+    updateStats();
+    return;
+  }
+
+  bookmarkGrid.innerHTML = filtered.map(bm => `
+    <div class="bm-card"
+         draggable="true"
+         data-id="${bm.id}"
+         tabindex="0"
+         role="link"
+         aria-label="เปิด ${escapeHtml(bm.name)} ในแท็บใหม่">
+      <div class="bm-actions">
+        <button type="button" class="bm-action-btn edit-btn" data-action="edit" data-id="${bm.id}" aria-label="แก้ไข ${escapeHtml(bm.name)}">✎</button>
+        <button type="button" class="bm-action-btn" data-action="delete" data-id="${bm.id}" aria-label="ลบ ${escapeHtml(bm.name)}">✕</button>
+      </div>
+      <div class="bm-favicon">${faviconMarkup(bm)}</div>
+      <div class="bm-name">${escapeHtml(bm.name)}</div>
+      <div class="bm-cat-label">${escapeHtml(bm.category)}</div>
+    </div>
+  `).join('') + `
+    <div class="bm-card bm-add-card" id="inline-add-card" tabindex="0" role="button" aria-label="เพิ่ม Bookmark ใหม่">
+      <span class="plus">+</span>
+      <span style="font-size:12px;">เพิ่ม Bookmark</span>
+    </div>
+  `;
+
+  // Open bookmark on click (ignore clicks that hit the action buttons)
+  bookmarkGrid.querySelectorAll('.bm-card[data-id]').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if(e.target.closest('.bm-action-btn')) return;
+      const bm = state.bookmarks.find(b => b.id === card.dataset.id);
+      if(bm) window.open(bm.url, '_blank', 'noopener');
+    });
+    card.addEventListener('keydown', (e) => {
+      if((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.bm-action-btn')){
+        e.preventDefault();
+        const bm = state.bookmarks.find(b => b.id === card.dataset.id);
+        if(bm) window.open(bm.url, '_blank', 'noopener');
+      }
+    });
+
+    // Drag & drop reordering
+    card.addEventListener('dragstart', () => {
+      dragSourceId = card.dataset.id;
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const targetId = card.dataset.id;
+      if(dragSourceId && targetId && dragSourceId !== targetId){
+        reorderBookmarks(dragSourceId, targetId);
+      }
+    });
+  });
+
+  document.getElementById('inline-add-card')?.addEventListener('click', () => openBookmarkModal());
+  document.getElementById('inline-add-card')?.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openBookmarkModal(); }
+  });
+
+  // Edit / delete buttons
+  bookmarkGrid.querySelectorAll('[data-action="edit"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openBookmarkModal(btn.dataset.id);
+    });
+  });
+  bookmarkGrid.querySelectorAll('[data-action="delete"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteBookmark(btn.dataset.id);
+    });
+  });
+
+  updateStats();
+}
+
+function reorderBookmarks(sourceId, targetId){
+  const sorted = state.bookmarks.slice().sort((a,b) => a.order - b.order);
+  const sourceIdx = sorted.findIndex(b => b.id === sourceId);
+  const targetIdx = sorted.findIndex(b => b.id === targetId);
+  if(sourceIdx === -1 || targetIdx === -1) return;
+
+  const [moved] = sorted.splice(sourceIdx, 1);
+  sorted.splice(targetIdx, 0, moved);
+
+  // Reassign order values sequentially
+  sorted.forEach((bm, i) => { bm.order = i; });
+  state.bookmarks = sorted;
+
+  saveState();
+  renderBookmarks();
+}
+
+function deleteBookmark(id){
+  const bm = state.bookmarks.find(b => b.id === id);
+  if(!bm) return;
+  state.bookmarks = state.bookmarks.filter(b => b.id !== id);
+  saveState();
+  renderCategoryTabs();
+  renderBookmarks();
+  showToast(`ลบ "${bm.name}" แล้ว`);
+}
+
+function updateStats(){
+  document.getElementById('stat-bookmarks').textContent = state.bookmarks.length;
+  document.getElementById('stat-categories').textContent = state.categories.length;
+}
+
+/* ---------- Add / Edit Modal ---------- */
+const bmModalOverlay = document.getElementById('bm-modal-overlay');
+const bmForm = document.getElementById('bm-form');
+const bmNameInput = document.getElementById('bm-name-input');
+const bmUrlInput = document.getElementById('bm-url-input');
+const bmCatInput = document.getElementById('bm-cat-input');
+const bmModalTitle = document.getElementById('bm-modal-title');
+let editingBookmarkId = null;
+
+function populateCategorySelect(){
+  bmCatInput.innerHTML = state.categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+}
+
+function openBookmarkModal(id){
+  populateCategorySelect();
+  editingBookmarkId = id || null;
+
+  if(id){
+    const bm = state.bookmarks.find(b => b.id === id);
+    if(!bm) return;
+    bmModalTitle.textContent = 'แก้ไข Bookmark';
+    bmNameInput.value = bm.name;
+    bmUrlInput.value = bm.url;
+    bmCatInput.value = bm.category;
+  } else {
+    bmModalTitle.textContent = 'เพิ่ม Bookmark';
+    bmForm.reset();
+    if(state.activeCategory !== 'all') bmCatInput.value = state.activeCategory;
+  }
+
+  bmModalOverlay.classList.add('open');
+  setTimeout(() => bmNameInput.focus(), 50);
+}
+
+function closeBookmarkModal(){
+  bmModalOverlay.classList.remove('open');
+  editingBookmarkId = null;
+}
+
+document.getElementById('add-bookmark-btn').addEventListener('click', () => openBookmarkModal());
+document.getElementById('bm-cancel-btn').addEventListener('click', closeBookmarkModal);
+bmModalOverlay.addEventListener('click', (e) => { if(e.target === bmModalOverlay) closeBookmarkModal(); });
+
+bmForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  let name = bmNameInput.value.trim();
+  let url = bmUrlInput.value.trim();
+  const category = bmCatInput.value;
+
+  if(!name || !url) return;
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+  if(editingBookmarkId){
+    const bm = state.bookmarks.find(b => b.id === editingBookmarkId);
+    if(bm){ bm.name = name; bm.url = url; bm.category = category; }
+    showToast('แก้ไข Bookmark แล้ว');
+  } else {
+    const maxOrder = state.bookmarks.reduce((m, b) => Math.max(m, b.order), -1);
+    state.bookmarks.push({
+      id: 'bm_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      name, url, category,
+      order: maxOrder + 1
+    });
+    showToast('เพิ่ม Bookmark แล้ว');
+  }
+
+  saveState();
+  renderCategoryTabs();
+  renderBookmarks();
+  closeBookmarkModal();
+});
+
+/* ================================================================
+   6. QUICK URL — paste a link, save it to a list, click to open.
+   Supports adding as many links as needed. Stored in state.quickUrls.
+   ================================================================ */
+const quickUrlForm = document.getElementById('quick-url-form');
+const quickUrlInput = document.getElementById('quick-url-input');
+const quickUrlListEl = document.getElementById('quick-url-list');
+
+// Migrate/initialize: older saved states won't have this array yet
+if(!Array.isArray(state.quickUrls)) state.quickUrls = [];
+
+function normalizeUrl(raw){
+  let url = raw.trim();
+  if(!url) return '';
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  return url;
+}
+
+function renderQuickUrls(){
+  document.getElementById('stat-quick-urls').textContent = state.quickUrls.length;
+
+  if(state.quickUrls.length === 0){
+    quickUrlListEl.innerHTML = `<div class="quick-url-empty">ยังไม่มีลิงก์ที่บันทึกไว้ — วาง URL ด้านบนแล้วกด Enter</div>`;
+    return;
+  }
+
+  // Newest link first, so the thing you just pasted is easy to find
+  const sorted = state.quickUrls.slice().sort((a, b) => b.createdAt - a.createdAt);
+
+  quickUrlListEl.innerHTML = sorted.map(item => `
+    <div class="quick-url-item" data-id="${item.id}" tabindex="0" role="link" aria-label="เปิด ${escapeHtml(item.url)}">
+      <span class="quick-url-favicon">${faviconMarkup({ name: item.url, url: item.url })}</span>
+      <span class="quick-url-text">${escapeHtml(item.url)}</span>
+      <button type="button" class="quick-url-delete" data-id="${item.id}" aria-label="ลบลิงก์นี้">✕</button>
+    </div>
+  `).join('');
+
+  quickUrlListEl.querySelectorAll('.quick-url-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if(e.target.closest('.quick-url-delete')) return;
+      const item = state.quickUrls.find(q => q.id === el.dataset.id);
+      if(item) window.open(item.url, '_blank', 'noopener');
+    });
+    el.addEventListener('keydown', (e) => {
+      if((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.quick-url-delete')){
+        e.preventDefault();
+        const item = state.quickUrls.find(q => q.id === el.dataset.id);
+        if(item) window.open(item.url, '_blank', 'noopener');
+      }
+    });
+  });
+
+  quickUrlListEl.querySelectorAll('.quick-url-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.quickUrls = state.quickUrls.filter(q => q.id !== btn.dataset.id);
+      saveState();
+      renderQuickUrls();
+    });
+  });
+}
+
+quickUrlForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const url = normalizeUrl(quickUrlInput.value);
+  if(!url) return;
+
+  state.quickUrls.push({
+    id: 'qu_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    url,
+    createdAt: Date.now()
+  });
+  saveState();
+  quickUrlInput.value = '';
+  renderQuickUrls();
+  showToast('บันทึกลิงก์แล้ว');
+});
+
+renderQuickUrls();
+
+/* ================================================================
+   BACKUP — Export state to a downloadable .json file,
+   and Import a previously exported file back into localStorage.
+   ================================================================ */
+const exportBtn = document.getElementById('export-btn');
+const importBtn = document.getElementById('import-btn');
+const importFileInput = document.getElementById('import-file-input');
+
+exportBtn.addEventListener('click', () => {
+  try{
+    // Pretty-printed JSON so it's readable if the user opens it manually
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    // Build a friendly filename with today's date, e.g. dashboard-backup-2026-07-09.json
+    const now = new Date();
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dashboard-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    showToast('ดาวน์โหลดไฟล์สำรองแล้ว');
+  }catch(e){
+    console.error('Export ล้มเหลว', e);
+    showToast('Export ไม่สำเร็จ');
+  }
+});
+
+importBtn.addEventListener('click', () => importFileInput.click());
+
+importFileInput.addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+
+      // Validate shape before trusting it — same check as loadState()
+      if(!parsed || !Array.isArray(parsed.bookmarks) || !Array.isArray(parsed.categories)){
+        showToast('ไฟล์ไม่ถูกต้อง หรือไม่ใช่ไฟล์สำรองของ Dashboard นี้');
+        return;
+      }
+
+      const confirmed = confirm('การ Import จะแทนที่ Bookmark, หมวดหมู่ และ Quick URL ปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?');
+      if(!confirmed) return;
+
+      state = parsed;
+      // Reset filter to "all" in case the imported categories differ
+      state.activeCategory = 'all';
+      // Guard against older backup files that predate the Quick URL feature
+      if(!Array.isArray(state.quickUrls)) state.quickUrls = [];
+      saveState();
+
+      // Re-render every part of the UI that depends on state
+      renderCategoryTabs();
+      renderBookmarks();
+      renderQuickUrls();
+
+      showToast('Import ข้อมูลสำเร็จ');
+    }catch(err){
+      console.error('Import ล้มเหลว', err);
+      showToast('ไม่สามารถอ่านไฟล์นี้ได้ — ตรวจสอบว่าเป็นไฟล์ JSON ที่ถูกต้อง');
+    }finally{
+      // Reset the input so selecting the same file again still fires 'change'
+      importFileInput.value = '';
+    }
+  };
+  reader.onerror = () => {
+    showToast('อ่านไฟล์ไม่สำเร็จ');
+    importFileInput.value = '';
+  };
+  reader.readAsText(file);
+});
+
+/* ================================================================
+   RESET — wipe localStorage and restore default state.
+   Destructive and unrecoverable (unless the user has a backup file),
+   so this requires typing a confirmation word, not just clicking OK.
+   ================================================================ */
+const resetBtn = document.getElementById('reset-btn');
+
+resetBtn.addEventListener('click', () => {
+  const firstConfirm = confirm('ต้องการลบ Bookmark, หมวดหมู่ และ Notes ทั้งหมด แล้วกลับไปใช้ค่าเริ่มต้นใช่หรือไม่?\n\nแนะนำให้กด Export สำรองข้อมูลก่อน หากยังไม่ได้ทำ');
+  if(!firstConfirm) return;
+
+  const typed = prompt('การกระทำนี้ไม่สามารถย้อนกลับได้ พิมพ์คำว่า "RESET" (ตัวพิมพ์ใหญ่) เพื่อยืนยัน:');
+  if(typed !== 'RESET'){
+    showToast('ยกเลิกการรีเซ็ต');
+    return;
+  }
+
+  try{
+    localStorage.removeItem(STORAGE_KEY);
+    showToast('รีเซ็ตข้อมูลสำเร็จ กำลังโหลดหน้าใหม่...');
+    setTimeout(() => location.reload(), 700);
+  }catch(e){
+    console.error('รีเซ็ตล้มเหลว', e);
+    showToast('รีเซ็ตไม่สำเร็จ');
+  }
+});
+
+/* ================================================================
+   7. COMMAND PALETTE (Ctrl+K)
+   ================================================================ */
+const paletteOverlay = document.getElementById('palette-overlay');
+const paletteInput = document.getElementById('palette-input');
+const paletteResults = document.getElementById('palette-results');
+let paletteActiveIndex = 0;
+let paletteMatches = [];
+
+function openPalette(){
+  paletteOverlay.classList.add('open');
+  paletteInput.value = '';
+  renderPaletteResults('');
+  setTimeout(() => paletteInput.focus(), 50);
+}
+function closePalette(){
+  paletteOverlay.classList.remove('open');
+}
+
+function renderPaletteResults(query){
+  const q = query.trim().toLowerCase();
+  paletteMatches = state.bookmarks
+    .filter(b => !q || b.name.toLowerCase().includes(q) || b.url.toLowerCase().includes(q) || b.category.toLowerCase().includes(q))
+    .sort((a,b) => a.order - b.order);
+
+  paletteActiveIndex = 0;
+
+  if(paletteMatches.length === 0){
+    paletteResults.innerHTML = `<div class="palette-empty">ไม่พบ Bookmark ที่ตรงกัน — กด Enter เพื่อค้นหาผ่าน Google แทน</div>`;
+    return;
+  }
+
+  paletteResults.innerHTML = paletteMatches.map((bm, i) => `
+    <div class="palette-item ${i === 0 ? 'active' : ''}" data-index="${i}">
+      <span class="pf">${faviconMarkup(bm)}</span>
+      <span class="pname">${escapeHtml(bm.name)}</span>
+      <span class="purl">${escapeHtml(bm.category)}</span>
+    </div>
+  `).join('');
+
+  paletteResults.querySelectorAll('.palette-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const bm = paletteMatches[Number(item.dataset.index)];
+      if(bm){ window.open(bm.url, '_blank', 'noopener'); closePalette(); }
+    });
+    item.addEventListener('mouseenter', () => {
+      paletteActiveIndex = Number(item.dataset.index);
+      highlightPaletteActive();
+    });
+  });
+}
+
+function highlightPaletteActive(){
+  paletteResults.querySelectorAll('.palette-item').forEach(item => {
+    item.classList.toggle('active', Number(item.dataset.index) === paletteActiveIndex);
+  });
+  const activeEl = paletteResults.querySelector('.palette-item.active');
+  if(activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+}
+
+paletteInput.addEventListener('input', () => renderPaletteResults(paletteInput.value));
+
+paletteInput.addEventListener('keydown', (e) => {
+  if(e.key === 'ArrowDown'){
+    e.preventDefault();
+    if(paletteMatches.length){
+      paletteActiveIndex = (paletteActiveIndex + 1) % paletteMatches.length;
+      highlightPaletteActive();
+    }
+  } else if(e.key === 'ArrowUp'){
+    e.preventDefault();
+    if(paletteMatches.length){
+      paletteActiveIndex = (paletteActiveIndex - 1 + paletteMatches.length) % paletteMatches.length;
+      highlightPaletteActive();
+    }
+  } else if(e.key === 'Enter'){
+    e.preventDefault();
+    if(paletteMatches.length){
+      const bm = paletteMatches[paletteActiveIndex];
+      window.open(bm.url, '_blank', 'noopener');
+      closePalette();
+    } else if(paletteInput.value.trim()){
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(paletteInput.value.trim()), '_blank', 'noopener');
+      closePalette();
+    }
+  } else if(e.key === 'Escape'){
+    closePalette();
+  }
+});
+
+paletteOverlay.addEventListener('click', (e) => { if(e.target === paletteOverlay) closePalette(); });
+
+/* ================================================================
+   GLOBAL KEYBOARD SHORTCUTS
+   Ctrl+K / Cmd+K -> open Command Palette
+   Escape         -> close any open overlay
+   ================================================================ */
+document.addEventListener('keydown', (e) => {
+  const isCtrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
+  if(isCtrlK){
+    e.preventDefault();
+    if(paletteOverlay.classList.contains('open')){
+      closePalette();
+    } else {
+      openPalette();
+    }
+    return;
+  }
+  if(e.key === 'Escape'){
+    if(bmModalOverlay.classList.contains('open')) closeBookmarkModal();
+    if(catModalOverlay.classList.contains('open')) closeCategoryModal();
+  }
+});
+
+/* ================================================================
+   9. BACKGROUND ANIMATION — lightweight node network on canvas
+   Design notes:
+   - Particle count is capped and scaled down on small screens
+   - Uses requestAnimationFrame, pauses when tab is hidden
+   - devicePixelRatio capped at 1.5 to avoid huge canvases on hi-DPI
+   ================================================================ */
+(function backgroundAnimation(){
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let width, height, dpr;
+  let nodes = [];
+  let animId = null;
+  let isVisible = true;
+
+  const NODE_COLOR = 'rgba(224,164,88,0.55)';
+  const LINE_COLOR = 'rgba(224,164,88,';
+  const LINK_DIST = 130;
+
+  function sizeCanvas(){
+    dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function initNodes(){
+    // Fewer nodes on small screens to keep it light
+    const count = width < 700 ? 22 : 42;
+    nodes = Array.from({ length: count }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      r: Math.random() * 1.4 + 0.6
+    }));
+  }
+
+  function step(){
+    ctx.clearRect(0, 0, width, height);
+
+    // Update positions with gentle drift + wrap-around edges
+    for(const n of nodes){
+      n.x += n.vx;
+      n.y += n.vy;
+      if(n.x < -20) n.x = width + 20;
+      if(n.x > width + 20) n.x = -20;
+      if(n.y < -20) n.y = height + 20;
+      if(n.y > height + 20) n.y = -20;
+    }
+
+    // Draw connecting lines between nearby nodes
+    for(let i = 0; i < nodes.length; i++){
+      for(let j = i + 1; j < nodes.length; j++){
+        const a = nodes[i], b = nodes[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if(dist < LINK_DIST){
+          const alpha = (1 - dist / LINK_DIST) * 0.16;
+          ctx.strokeStyle = LINE_COLOR + alpha + ')';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw nodes
+    ctx.fillStyle = NODE_COLOR;
+    for(const n of nodes){
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if(isVisible) animId = requestAnimationFrame(step);
+  }
+
+  function start(){
+    if(!animId && isVisible) animId = requestAnimationFrame(step);
+  }
+  function stop(){
+    if(animId){ cancelAnimationFrame(animId); animId = null; }
+  }
+
+  // Respect reduced-motion preference: render a single static frame only
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  sizeCanvas();
+  initNodes();
+
+  if(prefersReducedMotion){
+    step(); // draw one static frame
+    isVisible = false; // prevent further rAF loops
+  } else {
+    start();
+  }
+
+  window.addEventListener('resize', () => {
+    sizeCanvas();
+    initNodes();
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    isVisible = !document.hidden;
+    if(isVisible && !prefersReducedMotion) start();
+    else stop();
+  });
+})();
+
+/* ================================================================
+   INITIAL RENDER
+   ================================================================ */
+ensureFallbackCategoryExists();
+renderCategoryTabs();
+renderBookmarks();
+updateStats();
+
+// Focus search on load for quick keyboard-first usage (desktop only,
+// skipped on touch devices to avoid popping the mobile keyboard).
+if(!('ontouchstart' in window)){
+  searchInput.focus();
+}
+</script>
+</body>
+</html>
