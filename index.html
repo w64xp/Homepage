@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEXUS // Home Console</title>
+<title>Home</title>
 <style>
 /* ==========================================================================
    TOKENS — cyberpunk HUD palette
@@ -27,7 +27,9 @@
   --font-display: "Segoe UI Semibold", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Cascadia Code", "SF Mono", "Consolas", ui-monospace, "Courier New", monospace;
 }
-
+a {
+  text-decoration: none;
+}
 /* ==========================================================================
    RESET & BASE
    ========================================================================== */
@@ -395,16 +397,18 @@ input:focus, select:focus{ border-color:var(--cyan); }
       <span class="value" id="statBookmarks">0</span>
     </div>
     <div class="stat-card hud-frame magenta">
+      <span class="label">Quick URLs</span>
+      <span class="value" id="statQuickUrls">0</span>
+    </div>
+    <div class="stat-card hud-frame magenta">
       <span class="label">Categories</span>
       <span class="value" id="statCategories">0</span>
     </div>
     <div class="stat-card hud-frame">
       <span class="label">System Time</span>
-      <span class="value" id="statTime">--:--:--</span>
-    </div>
-    <div class="stat-card hud-frame magenta">
-      <span class="label">Quick URLs</span>
-      <span class="value" id="statQuickUrls">0</span>
+      <a href="https://time.is/">
+        <span class="value" id="statTime">--:--:--</span>
+      </a>
     </div>
   </section>
 
