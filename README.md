@@ -126,3 +126,71 @@ index.html   ← ไฟล์เดียวจบ (HTML + CSS + JavaScript ท�
 ```
 
 ไม่มี dependency ภายนอก ไม่มี build step ไม่ต้องใช้ npm/node — เปิดไฟล์ในเบราว์เซอร์ได้ทันที
+
+``` 
+Here's the English version with a style placeholder:
+
+
+**Prompt:**
+
+Create a landing page to be used as a browser homepage, in a single HTML file (HTML, CSS, and JavaScript only — no frameworks, no external CDNs).
+
+**Style / Theme:**
+[ INSERT YOUR DESIRED STYLE HERE — e.g. color palette, dark/light mode, typography, overall visual mood, any signature visual element like a background animation ]
+
+**Requirements:**
+- Responsive, works well on both desktop and mobile
+- Loads fast and works offline (except parts that genuinely require internet, like favicons)
+- All data persisted with LocalStorage under a single namespaced key
+- Clean, readable code structure with comments explaining key sections
+- Clicking/opening any link (Bookmark, Quick URL, Search) navigates in the same tab — never opens a new tab
+
+**Features:**
+
+1. **Bookmark Manager**
+   - Displayed as a card grid, click to open in the same tab
+   - Add / edit / delete bookmarks
+   - Drag & drop to reorder
+   - Favicon fetched automatically from the DuckDuckGo Favicon API (`icons.duckduckgo.com/ip3/{domain}.ico`), with a fallback to the bookmark's first letter if it fails to load
+   - Starts empty — no sample/default bookmarks included
+
+2. **Categories**
+   - Add / delete / rename categories via a management modal
+   - Starts with a single category called "Other" as a permanent fallback — it cannot be deleted or renamed
+   - Deleting a category that has bookmarks in it moves those bookmarks to "Other" automatically, with a confirmation prompt first
+   - Filter tabs above the bookmark grid, each showing a count
+
+3. **Quick URL**
+   - Paste a link and press Enter or a button to save it; supports adding unlimited entries
+   - List shows newest first, each with its favicon
+   - Click an entry to open it in the same tab; hover to reveal a delete button per item
+
+4. **Command Palette**
+   - Opens with Ctrl+K (Cmd+K on Mac)
+   - Real-time search across bookmarks (by name, URL, or category)
+   - Arrow keys ↑↓ to navigate, Enter to open in the same tab, Esc to close
+   - If no bookmark matches, pressing Enter falls back to a Google search (same tab)
+
+5. **Statistics Panel**
+   - Total bookmark count
+   - Total category count
+   - Current time (real-time, updating)
+   - Total saved Quick URLs
+
+6. **Backup (Export / Import)**
+   - Export all data (bookmarks, categories, Quick URLs) as a downloadable .json file with the date in the filename
+   - Import a previously exported .json file, with structure validation and a confirmation prompt before overwriting existing data
+   - Gracefully handles older backup files missing newer fields (fills in sensible defaults instead of erroring)
+
+7. **Reset Data**
+   - A "reset all data" button that requires typing a confirmation word (e.g. "RESET") before actually wiping data — to prevent accidental clicks
+
+**Quality:**
+- Good accessibility (aria-labels, keyboard navigation, visible focus rings)
+- Everything lives in a single index.html file, no external libraries
+- Works immediately when the file is opened in a browser
+
+**Note:** Do not include a Header section (dashboard title/clock/greeting) and do not include a separate Universal Search section.
+
+
+```

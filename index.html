@@ -1,2028 +1,1272 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Homepage</title>
-
+<title>NEXUS // Home Console</title>
 <style>
-/* ============================================================
-   DESIGN TOKENS
-   Base: deep charcoal/navy "instrument panel" dark theme
-   Accent: warm amber/brass (like a dial light)
-   Type: humanist sans for UI, monospace for data/time
-   ============================================================ */
+/* ==========================================================================
+   TOKENS — cyberpunk HUD palette
+   ========================================================================== */
 :root{
-  --bg-0:#0b0d10;          /* deepest background */
-  --bg-1:#12151a;          /* panel background */
-  --bg-2:#181c22;          /* card background */
-  --bg-3:#20252c;          /* hover / raised */
-  --line:#262b33;          /* hairline borders */
-  --line-soft:#1b1f25;
-  --text-hi:#eef0f2;       /* primary text */
-  --text-mid:#9aa3ad;      /* secondary text */
-  --text-low:#5c6470;      /* tertiary text */
-  --amber:#e0a458;         /* signature accent */
-  --amber-dim:#8a6a3f;
-  --amber-glow:rgba(224,164,88,0.18);
-  --danger:#c2604f;
-  --ok:#6fa287;
-  --radius-l:18px;
-  --radius-m:12px;
-  --radius-s:8px;
-  --font-ui: 'Segoe UI', system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  --ease: cubic-bezier(.22,.61,.36,1);
+  --bg-void:#05060a;
+  --bg-void-2:#0a0d16;
+  --panel:rgba(13,17,28,.62);
+  --panel-solid:#0d111c;
+  --cyan:#38f4ff;
+  --cyan-dim:#38f4ff55;
+  --magenta:#ff2fb0;
+  --magenta-dim:#ff2fb055;
+  --amber:#ffb020;
+  --text:#dff6ff;
+  --text-dim:#7b93a3;
+  --text-faint:#4d6272;
+  --danger:#ff3860;
+  --line:rgba(56,244,255,.14);
+  --radius:2px;
+  --font-display: "Segoe UI Semibold", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Cascadia Code", "SF Mono", "Consolas", ui-monospace, "Courier New", monospace;
 }
 
-*{box-sizing:border-box;}
-html,body{height:100%;}
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ height:100%; }
 body{
   margin:0;
-  background:var(--bg-0);
-  color:var(--text-hi);
-  font-family:var(--font-ui);
-  -webkit-font-smoothing:antialiased;
+  background:var(--bg-void);
+  color:var(--text);
+  font-family:var(--font-mono);
+  min-height:100vh;
   overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
 }
 
-/* Respect reduced motion preference across the whole page */
-@media (prefers-reduced-motion: reduce){
-  *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+/* animated digital grid background */
+.grid-bg{
+  position:fixed; inset:0; z-index:-2;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:42px 42px;
+  animation:gridDrift 40s linear infinite;
+  mask-image:radial-gradient(ellipse at center, black 0%, transparent 85%);
 }
-
-a{color:inherit;text-decoration:none;}
-button{font-family:inherit;}
-
-/* Visible focus ring for accessibility */
-:focus-visible{
-  outline:2px solid var(--amber);
-  outline-offset:2px;
-  border-radius:4px;
-}
-
-/* ============================================================
-   BACKGROUND ANIMATION — signature element
-   A quiet canvas of drifting nodes with faint connecting lines,
-   like a constellation / instrument-panel readout.
-   Lightweight: <60 particles, capped devicePixelRatio, pauses
-   when tab is hidden to save resources.
-   ============================================================ */
-#bg-canvas{
-  position:fixed;
-  inset:0;
-  width:100%;
-  height:100%;
-  z-index:0;
-  opacity:0.55;
-}
-.bg-vignette{
-  position:fixed;
-  inset:0;
-  z-index:1;
-  pointer-events:none;
+.grid-glow{
+  position:fixed; inset:0; z-index:-1;
   background:
-    radial-gradient(ellipse at 50% -10%, rgba(224,164,88,0.06), transparent 60%),
-    radial-gradient(ellipse at 100% 100%, rgba(90,110,140,0.05), transparent 55%),
-    linear-gradient(180deg, transparent 0%, var(--bg-0) 100%);
+    radial-gradient(ellipse 60% 40% at 15% 0%, var(--cyan-dim), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 100%, var(--magenta-dim), transparent 60%);
+  pointer-events:none;
+}
+@keyframes gridDrift{
+  from{ background-position:0 0, 0 0; }
+  to{ background-position:42px 42px, 42px 42px; }
+}
+@media (prefers-reduced-motion: reduce){
+  .grid-bg{ animation:none; }
+  *{ scroll-behavior:auto !important; }
 }
 
-/* ============================================================
+/* scrollbar */
+::-webkit-scrollbar{ width:10px; height:10px; }
+::-webkit-scrollbar-track{ background:var(--bg-void-2); }
+::-webkit-scrollbar-thumb{ background:var(--cyan-dim); border-radius:4px; }
+
+/* ==========================================================================
+   HUD FRAME — corner-bracket signature element, built from gradients only
+   ========================================================================== */
+.hud-frame{
+  position:relative;
+  background-color:var(--panel);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(56,244,255,.18);
+  background-image:
+    linear-gradient(var(--cyan), var(--cyan)), linear-gradient(var(--cyan), var(--cyan)),
+    linear-gradient(var(--cyan), var(--cyan)), linear-gradient(var(--cyan), var(--cyan)),
+    linear-gradient(var(--magenta), var(--magenta)), linear-gradient(var(--magenta), var(--magenta)),
+    linear-gradient(var(--magenta), var(--magenta)), linear-gradient(var(--magenta), var(--magenta));
+  background-repeat:no-repeat;
+  background-size:16px 2px, 2px 16px, 16px 2px, 2px 16px, 16px 2px, 2px 16px, 16px 2px, 2px 16px;
+  background-position:
+    top 0 left 0, top 0 left 0,
+    top 0 right 0, top 0 right 0,
+    bottom 0 left 0, bottom 0 left 0,
+    bottom 0 right 0, bottom 0 right 0;
+}
+
+/* ==========================================================================
    LAYOUT
-   ============================================================ */
-.wrap{
-  position:relative;
-  z-index:2;
-  max-width:1180px;
+   ========================================================================== */
+.console{
+  max-width:1320px;
   margin:0 auto;
-  padding:28px 24px 80px;
-}
-
-/* ---------- Header ---------- */
-.header{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:20px;
-  padding:8px 4px 32px;
-  flex-wrap:wrap;
-}
-.header .brand{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-.brand-eyebrow{
-  font-family:var(--font-mono);
-  font-size:11px;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  color:var(--amber-dim);
-}
-.brand-title{
-  font-size:26px;
-  font-weight:600;
-  letter-spacing:-.01em;
-  color:var(--text-hi);
-}
-.brand-greeting{
-  font-size:14px;
-  color:var(--text-mid);
-  margin-top:2px;
-}
-.header .clock{
-  text-align:right;
-  font-family:var(--font-mono);
-}
-.clock-time{
-  font-size:34px;
-  font-weight:600;
-  color:var(--text-hi);
-  letter-spacing:.01em;
-  line-height:1;
-}
-.clock-time .sec{
-  color:var(--amber);
-  font-size:20px;
-}
-.clock-date{
-  margin-top:6px;
-  font-size:13px;
-  color:var(--text-mid);
-}
-
-/* ---------- Search ---------- */
-.search-section{
-  margin-bottom:34px;
-}
-.search-box{
-  position:relative;
-  display:flex;
-  align-items:center;
-  background:var(--bg-1);
-  border:1px solid var(--line);
-  border-radius:var(--radius-l);
-  padding:6px 8px 6px 20px;
-  transition:border-color .25s var(--ease), box-shadow .25s var(--ease);
-}
-.search-box:focus-within{
-  border-color:var(--amber-dim);
-  box-shadow:0 0 0 4px var(--amber-glow);
-}
-.search-icon{
-  flex:0 0 auto;
-  color:var(--text-low);
-  margin-right:14px;
-}
-.search-input{
-  flex:1;
-  background:transparent;
-  border:none;
-  outline:none;
-  color:var(--text-hi);
-  font-size:17px;
-  padding:14px 0;
-  font-family:var(--font-ui);
-}
-.search-input::placeholder{color:var(--text-low);}
-.kbd-hint{
-  flex:0 0 auto;
-  display:flex;
-  align-items:center;
-  gap:4px;
-  font-family:var(--font-mono);
-  font-size:11px;
-  color:var(--text-low);
-  background:var(--bg-2);
-  border:1px solid var(--line);
-  border-radius:var(--radius-s);
-  padding:5px 9px;
-  margin-right:6px;
-  white-space:nowrap;
-}
-
-/* ---------- Section headers ---------- */
-.section-heading{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin:0 4px 14px;
-  gap:12px;
-  flex-wrap:wrap;
-}
-.section-heading h2{
-  font-size:14px;
-  font-weight:600;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  color:var(--text-mid);
-  margin:0;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.section-heading h2::before{
-  content:"";
-  width:6px;height:6px;border-radius:50%;
-  background:var(--amber);
-  box-shadow:0 0 8px var(--amber-glow);
-}
-
-/* ---------- Buttons ---------- */
-.btn{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  cursor:pointer;
-  border:1px solid var(--line);
-  background:var(--bg-2);
-  color:var(--text-hi);
-  padding:9px 14px;
-  border-radius:var(--radius-s);
-  font-size:13px;
-  font-weight:500;
-  transition:background .2s var(--ease), border-color .2s var(--ease), transform .15s var(--ease);
-}
-.btn:hover{background:var(--bg-3); border-color:#33393f;}
-.btn:active{transform:scale(0.97);}
-.btn-primary{
-  background:var(--amber);
-  border-color:var(--amber);
-  color:#211505;
-  font-weight:600;
-}
-.btn-primary:hover{background:#eab372; border-color:#eab372;}
-.btn-icon-only{padding:9px;}
-.btn-danger:hover{background:rgba(194,96,79,0.15); border-color:var(--danger); color:#e39284;}
-
-/* ---------- Main grid: bookmarks (left) + sidebar (right) ---------- */
-.main-grid{
+  padding:20px 20px 60px;
   display:grid;
-  grid-template-columns: 1fr 320px;
-  gap:28px;
-  align-items:start;
+  gap:18px;
 }
-@media (max-width: 900px){
-  .main-grid{grid-template-columns: 1fr;}
-}
-
-/* ---------- Category tabs ---------- */
-.cat-tabs{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin:0 4px 18px;
-}
-.cat-tab{
-  padding:7px 14px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  background:var(--bg-1);
-  color:var(--text-mid);
-  font-size:13px;
-  cursor:pointer;
-  transition:all .2s var(--ease);
-  user-select:none;
-}
-.cat-tab:hover{border-color:var(--amber-dim); color:var(--text-hi);}
-.cat-tab.active{
-  background:var(--amber-glow);
-  border-color:var(--amber-dim);
-  color:var(--amber);
-  font-weight:600;
-}
-.cat-tab .count{
-  opacity:.65;
-  margin-left:5px;
-  font-family:var(--font-mono);
-  font-size:11px;
+.row{ display:grid; gap:18px; }
+.row.stats{ grid-template-columns:repeat(4, 1fr); }
+.row.main{ grid-template-columns:2.1fr 1fr; align-items:start; }
+@media (max-width:900px){
+  .row.stats{ grid-template-columns:repeat(2,1fr); }
+  .row.main{ grid-template-columns:1fr; }
 }
 
-/* ---------- Bookmark grid ---------- */
-.bookmark-grid{
-  display:grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap:14px;
+/* ==========================================================================
+   STAT CARDS
+   ========================================================================== */
+.stat-card{
+  padding:14px 16px;
+  display:flex; flex-direction:column; gap:6px;
 }
-.bm-card{
-  position:relative;
-  background:var(--bg-1);
-  border:1px solid var(--line);
-  border-radius:var(--radius-m);
-  padding:16px 14px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:10px;
-  text-align:center;
-  cursor:grab;
-  transition:transform .18s var(--ease), border-color .18s var(--ease), background .18s var(--ease);
-  animation: card-in .35s var(--ease) both;
+.stat-card .label{
+  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--text-dim); font-family:var(--font-display);
 }
-@keyframes card-in{
-  from{opacity:0; transform:translateY(6px);}
-  to{opacity:1; transform:translateY(0);}
+.stat-card .value{
+  font-size:26px; font-weight:600; color:var(--cyan);
+  text-shadow:0 0 12px var(--cyan-dim);
+  font-variant-numeric:tabular-nums;
 }
-.bm-card:hover{
-  border-color:var(--amber-dim);
-  background:var(--bg-2);
-  transform:translateY(-3px);
-}
-.bm-card.dragging{
-  opacity:.4;
-  cursor:grabbing;
-}
-.bm-card.drag-over{
-  border-color:var(--amber);
-  box-shadow:0 0 0 3px var(--amber-glow);
-}
-.bm-favicon{
-  width:32px;height:32px;
-  border-radius:8px;
-  background:var(--bg-3);
-  display:flex;align-items:center;justify-content:center;
-  overflow:hidden;
-  flex:0 0 auto;
-}
-.bm-favicon img{width:20px;height:20px;object-fit:contain;}
-.bm-name{
-  font-size:13px;
-  font-weight:500;
-  color:var(--text-hi);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  max-width:100%;
-}
-.bm-cat-label{
-  font-size:10px;
-  color:var(--text-low);
-  font-family:var(--font-mono);
-  text-transform:uppercase;
-  letter-spacing:.05em;
-}
-.bm-actions{
-  position:absolute;
-  top:6px; right:6px;
-  display:flex;
-  gap:4px;
-  opacity:0;
-  transition:opacity .15s var(--ease);
-}
-.bm-card:hover .bm-actions, .bm-card:focus-within .bm-actions{opacity:1;}
-.bm-action-btn{
-  width:22px;height:22px;
-  border-radius:6px;
-  border:none;
-  background:var(--bg-3);
-  color:var(--text-mid);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;
-  font-size:12px;
-}
-.bm-action-btn:hover{background:var(--danger); color:#fff;}
-.bm-action-btn.edit-btn:hover{background:var(--amber); color:#211505;}
+.stat-card.magenta .value{ color:var(--magenta); text-shadow:0 0 12px var(--magenta-dim); }
 
-.bm-add-card{
-  border-style:dashed;
-  color:var(--text-low);
-  cursor:pointer;
-  min-height:96px;
-  justify-content:center;
-}
-.bm-add-card:hover{color:var(--amber); border-color:var(--amber-dim);}
-.bm-add-card .plus{font-size:22px; line-height:1;}
-
-.empty-state{
-  grid-column:1/-1;
-  text-align:center;
-  padding:40px 20px;
-  color:var(--text-low);
-  font-size:13px;
-}
-
-/* ---------- Sidebar ---------- */
-.sidebar{
-  display:flex;
-  flex-direction:column;
-  gap:24px;
-}
+/* ==========================================================================
+   SECTION / PANEL COMMON
+   ========================================================================== */
 .panel{
-  background:var(--bg-1);
-  border:1px solid var(--line);
-  border-radius:var(--radius-l);
   padding:18px;
 }
+.panel-head{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-bottom:14px; flex-wrap:wrap;
+}
 .panel-title{
-  font-size:13px;
-  font-weight:600;
+  font-family:var(--font-display); font-size:14px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--text);
+  display:flex; align-items:center; gap:8px;
+}
+.panel-title .dot{
+  width:7px; height:7px; border-radius:50%;
+  background:var(--cyan); box-shadow:0 0 8px 2px var(--cyan);
+}
+.panel-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+button, .btn{
+  font-family:var(--font-mono);
+  background:transparent;
+  color:var(--cyan);
+  border:1px solid var(--cyan-dim);
+  padding:8px 14px;
+  font-size:12px;
   letter-spacing:.06em;
+  cursor:pointer;
+  border-radius:var(--radius);
+  transition:background .15s ease, box-shadow .15s ease, color .15s ease;
   text-transform:uppercase;
-  color:var(--text-mid);
-  margin:0 0 14px;
-  display:flex;
-  align-items:center;
-  gap:8px;
+}
+button:hover, .btn:hover{
+  background:rgba(56,244,255,.1);
+  box-shadow:0 0 14px var(--cyan-dim);
+}
+button.magenta{ color:var(--magenta); border-color:var(--magenta-dim); }
+button.magenta:hover{ background:rgba(255,47,176,.1); box-shadow:0 0 14px var(--magenta-dim); }
+button.danger{ color:var(--danger); border-color:rgba(255,56,96,.4); }
+button.danger:hover{ background:rgba(255,56,96,.12); box-shadow:0 0 14px rgba(255,56,96,.4); }
+button.primary{ background:rgba(56,244,255,.12); }
+button:disabled{ opacity:.4; cursor:not-allowed; }
+button:focus-visible, a:focus-visible, input:focus-visible, .item:focus-visible, [tabindex]:focus-visible{
+  outline:2px solid var(--amber);
+  outline-offset:2px;
 }
 
-/* Stats */
-.stats-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-.stat-item{
-  background:var(--bg-2);
-  border:1px solid var(--line-soft);
-  border-radius:var(--radius-s);
-  padding:12px;
-}
-.stat-value{
+input, select{
   font-family:var(--font-mono);
-  font-size:22px;
-  font-weight:600;
-  color:var(--amber);
-  line-height:1.1;
-}
-.stat-label{
-  font-size:11px;
-  color:var(--text-low);
-  margin-top:4px;
-}
-
-/* Quick URL — paste-and-save link list */
-.quick-url-form{
-  display:flex;
-  gap:8px;
-}
-.quick-url-input{
-  flex:1;
-  min-width:0;
-  background:var(--bg-2);
-  border:1px solid var(--line-soft);
-  color:var(--text-hi);
-  font-family:var(--font-ui);
-  font-size:13.5px;
-  padding:10px 12px;
-  border-radius:var(--radius-s);
-  outline:none;
-  transition:border-color .2s var(--ease);
-}
-.quick-url-input:focus{border-color:var(--amber-dim);}
-.quick-url-list{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  margin-top:12px;
-  max-height:280px;
-  overflow-y:auto;
-}
-.quick-url-item{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  background:var(--bg-2);
-  border:1px solid var(--line-soft);
-  border-radius:var(--radius-s);
+  background:var(--bg-void-2);
+  border:1px solid var(--line);
+  color:var(--text);
   padding:9px 10px;
-  cursor:pointer;
-  transition:border-color .18s var(--ease), background .18s var(--ease);
-}
-.quick-url-item:hover{border-color:var(--amber-dim); background:var(--bg-3);}
-.quick-url-favicon{
-  width:20px;height:20px;
-  border-radius:5px;
-  background:var(--bg-3);
-  display:flex;align-items:center;justify-content:center;
-  overflow:hidden;
-  flex:0 0 auto;
-}
-.quick-url-favicon img{width:13px;height:13px;object-fit:contain;}
-.quick-url-text{
-  flex:1;
-  min-width:0;
+  border-radius:var(--radius);
   font-size:13px;
-  color:var(--text-hi);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
 }
-.quick-url-delete{
-  flex:0 0 auto;
-  width:22px;height:22px;
-  border-radius:6px;
-  border:none;
-  background:transparent;
-  color:var(--text-low);
-  cursor:pointer;
-  font-size:12px;
-  opacity:0;
-  transition:opacity .15s var(--ease), background .15s var(--ease), color .15s var(--ease);
+input::placeholder{ color:var(--text-faint); }
+input:focus, select:focus{ border-color:var(--cyan); }
+
+/* ==========================================================================
+   CATEGORY TABS
+   ========================================================================== */
+.tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.tab{
+  padding:6px 12px; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  border:1px solid var(--line); color:var(--text-dim); cursor:pointer;
+  border-radius:var(--radius); background:rgba(255,255,255,.02);
+  display:flex; align-items:center; gap:6px;
 }
-.quick-url-item:hover .quick-url-delete{opacity:1;}
-.quick-url-delete:hover{background:var(--danger); color:#fff;}
-.quick-url-empty{
+.tab .count{
+  background:rgba(56,244,255,.12); color:var(--cyan);
+  padding:1px 6px; border-radius:8px; font-size:10px;
+}
+.tab.active{
+  color:var(--cyan); border-color:var(--cyan);
+  box-shadow:0 0 10px var(--cyan-dim);
+  background:rgba(56,244,255,.08);
+}
+
+/* ==========================================================================
+   BOOKMARK GRID
+   ========================================================================== */
+.bookmark-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(150px,1fr));
+  gap:12px;
+}
+.bookmark-card{
+  position:relative;
+  padding:14px 10px 10px;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
   text-align:center;
-  color:var(--text-low);
-  font-size:12px;
-  padding:20px 8px;
+  cursor:grab;
+  transition:transform .12s ease;
 }
-
-/* Backup panel — export/import row */
-.backup-row{
-  display:flex;
-  gap:8px;
-}
-.backup-row .btn{flex:1; justify-content:center;}
-.backup-hint{
-  margin-top:10px;
-  font-size:11px;
-  color:var(--text-low);
-  line-height:1.5;
-}
-.danger-zone{
-  margin-top:14px;
-  padding-top:14px;
-  border-top:1px solid var(--line-soft);
-}
-.btn-full-danger{
-  width:100%;
-  justify-content:center;
-  color:var(--danger);
-  border-color:rgba(194,96,79,0.35);
-}
-.btn-full-danger:hover{
-  background:rgba(194,96,79,0.15);
-  border-color:var(--danger);
-  color:#e39284;
-}
-
-/* ============================================================
-   MODAL (Add/Edit bookmark)
-   ============================================================ */
-.modal-overlay{
-  position:fixed; inset:0;
-  background:rgba(6,7,9,0.65);
-  backdrop-filter:blur(3px);
+.bookmark-card:hover{ transform:translateY(-3px); }
+.bookmark-card:active{ cursor:grabbing; }
+.bookmark-card.drag-over{ outline:1px dashed var(--magenta); }
+.favicon-wrap{
+  width:40px; height:40px; border-radius:8px;
   display:flex; align-items:center; justify-content:center;
-  z-index:100;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .2s var(--ease);
-  padding:20px;
+  background:var(--bg-void-2); border:1px solid var(--line);
+  overflow:hidden; flex-shrink:0;
 }
-.modal-overlay.open{opacity:1; pointer-events:auto;}
-.modal{
-  background:var(--bg-1);
-  border:1px solid var(--line);
-  border-radius:var(--radius-l);
-  padding:24px;
-  width:100%;
-  max-width:400px;
-  transform:translateY(10px) scale(.98);
-  transition:transform .2s var(--ease);
+.favicon-wrap img{ width:22px; height:22px; object-fit:contain; }
+.favicon-fallback{
+  font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--cyan);
 }
-.modal-overlay.open .modal{transform:translateY(0) scale(1);}
-.modal h3{margin:0 0 18px; font-size:16px; font-weight:600;}
-.field{margin-bottom:14px;}
-.field label{
-  display:block;
-  font-size:12px;
-  color:var(--text-mid);
-  margin-bottom:6px;
+.bm-name{
+  font-size:12px; color:var(--text); word-break:break-word;
+  max-width:100%;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
-.field input, .field select{
-  width:100%;
-  background:var(--bg-2);
-  border:1px solid var(--line-soft);
-  color:var(--text-hi);
-  padding:10px 12px;
-  border-radius:var(--radius-s);
-  font-size:14px;
-  outline:none;
-  font-family:inherit;
-  transition:border-color .2s var(--ease);
+.bm-cat{ font-size:9px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; }
+.bm-controls{
+  position:absolute; top:6px; right:6px; display:flex; gap:4px;
+  opacity:0; transition:opacity .12s ease;
 }
-.field input:focus, .field select:focus{border-color:var(--amber-dim);}
-.modal-actions{
-  display:flex;
-  justify-content:flex-end;
-  gap:8px;
-  margin-top:20px;
+.bookmark-card:hover .bm-controls, .bookmark-card:focus-within .bm-controls{ opacity:1; }
+.icon-btn{
+  width:22px; height:22px; padding:0; display:flex; align-items:center; justify-content:center;
+  font-size:11px; border-radius:50%;
+}
+.bookmark-link{
+  position:absolute; inset:0; border-radius:inherit;
+}
+.empty-state{
+  grid-column:1/-1;
+  text-align:center; padding:40px 16px;
+  color:var(--text-dim); font-size:13px;
+}
+.empty-state .big{ font-size:20px; color:var(--cyan); margin-bottom:8px; display:block; }
+
+/* ==========================================================================
+   QUICK URL LIST
+   ========================================================================== */
+.quick-form{ display:flex; gap:8px; margin-bottom:14px; }
+.quick-form input{ flex:1; }
+.quick-list{ display:flex; flex-direction:column; gap:6px; max-height:360px; overflow-y:auto; }
+.quick-item{
+  position:relative;
+  display:flex; align-items:center; gap:10px;
+  padding:9px 10px; border:1px solid var(--line); border-radius:var(--radius);
+  background:rgba(255,255,255,.02);
+}
+.quick-item .favicon-wrap{ width:26px; height:26px; border-radius:5px; flex-shrink:0; }
+.quick-item .favicon-wrap img{ width:15px; height:15px; }
+.quick-item .qu-url{
+  flex:1; font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.quick-item a.qu-link{ position:absolute; inset:0; border-radius:inherit; }
+.quick-item .icon-btn{ position:relative; z-index:1; opacity:0; }
+.quick-item:hover .icon-btn, .quick-item:focus-within .icon-btn{ opacity:1; }
+
+/* ==========================================================================
+   FOOTER TOOLBAR
+   ========================================================================== */
+.toolbar{
+  display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+  padding:14px 0 4px;
+}
+.hint{
+  text-align:center; color:var(--text-faint); font-size:11px; letter-spacing:.04em;
+}
+.hint kbd{
+  background:var(--bg-void-2); border:1px solid var(--line); border-radius:3px;
+  padding:1px 6px; color:var(--cyan);
 }
 
-/* Category management list rows */
-.cat-manage-item{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  background:var(--bg-2);
-  border:1px solid var(--line-soft);
-  border-radius:var(--radius-s);
-  padding:8px 10px 8px 12px;
-}
-.cat-manage-item .cat-manage-name-group{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex:1;
-  min-width:0;
-}
-.cat-manage-item .cat-manage-name{
-  font-size:13.5px;
-  color:var(--text-hi);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.cat-manage-item .cat-manage-name-input{
-  flex:1;
-  min-width:0;
-  background:var(--bg-3);
-  border:1px solid var(--amber-dim);
-  color:var(--text-hi);
-  font-size:13.5px;
-  font-family:inherit;
-  padding:5px 8px;
-  border-radius:6px;
-  outline:none;
-}
-.cat-manage-item .cat-manage-count{
-  font-size:11px;
-  color:var(--text-low);
-  font-family:var(--font-mono);
-  flex:0 0 auto;
-}
-.cat-manage-item .cat-manage-actions{
-  display:flex;
-  gap:6px;
-  flex:0 0 auto;
-}
-.cat-manage-item .cat-manage-btn{
-  width:24px;height:24px;
-  border-radius:6px;
-  border:none;
-  background:var(--bg-3);
-  color:var(--text-mid);
-  cursor:pointer;
-  font-size:12px;
-  flex:0 0 auto;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.cat-manage-item .cat-manage-btn.rename-btn:hover{background:var(--amber); color:#211505;}
-.cat-manage-item .cat-manage-btn.delete-btn:hover{background:var(--danger); color:#fff;}
-.cat-manage-item .cat-manage-btn:disabled{
-  opacity:.3;
-  cursor:not-allowed;
-}
-
-/* ============================================================
-   COMMAND PALETTE (Ctrl+K)
-   ============================================================ */
-.palette-overlay{
-  position:fixed; inset:0;
-  background:rgba(6,7,9,0.7);
+/* ==========================================================================
+   MODALS
+   ========================================================================== */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(2,3,8,.72);
+  display:flex; align-items:center; justify-content:center;
+  z-index:100; padding:20px;
   backdrop-filter:blur(3px);
-  z-index:200;
-  display:flex;
-  justify-content:center;
-  align-items:flex-start;
-  padding-top:12vh;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .18s var(--ease);
 }
-.palette-overlay.open{opacity:1; pointer-events:auto;}
-.palette{
-  width:100%;
-  max-width:560px;
-  background:var(--bg-1);
-  border:1px solid var(--line);
-  border-radius:var(--radius-l);
-  overflow:hidden;
-  box-shadow:0 20px 60px rgba(0,0,0,.5);
-  transform:translateY(-8px);
-  transition:transform .2s var(--ease);
+.modal-overlay[hidden]{ display:none; }
+.modal{
+  width:100%; max-width:420px;
+  padding:22px;
+  max-height:86vh; overflow-y:auto;
 }
-.palette-overlay.open .palette{transform:translateY(0);}
-.palette-input-row{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  padding:16px 18px;
-  border-bottom:1px solid var(--line);
+.modal h2{
+  margin:0 0 16px; font-family:var(--font-display); font-size:15px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--cyan);
 }
-.palette-input-row svg{flex:0 0 auto; color:var(--text-low);}
-#palette-input{
-  flex:1;
-  background:transparent;
-  border:none;
-  outline:none;
-  color:var(--text-hi);
-  font-size:16px;
+.field{ display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+.field label{ font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+.cat-manage-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.cat-row{
+  display:flex; align-items:center; gap:8px;
+  padding:7px 8px; border:1px solid var(--line); border-radius:var(--radius);
 }
-#palette-input::placeholder{color:var(--text-low);}
-.palette-results{
-  max-height:340px;
-  overflow-y:auto;
-  padding:8px;
+.cat-row input{ flex:1; padding:5px 8px; font-size:12px; }
+.cat-row .locked{ color:var(--text-faint); font-size:10px; text-transform:uppercase; }
+.warn-text{ color:var(--amber); font-size:12px; line-height:1.5; margin-bottom:10px; }
+
+/* ==========================================================================
+   COMMAND PALETTE
+   ========================================================================== */
+.cmdk-overlay{
+  position:fixed; inset:0; background:rgba(2,3,8,.78);
+  z-index:200; display:flex; align-items:flex-start; justify-content:center;
+  padding-top:10vh;
 }
-.palette-item{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  padding:10px 12px;
-  border-radius:var(--radius-s);
-  cursor:pointer;
+.cmdk-overlay[hidden]{ display:none; }
+.cmdk-box{
+  width:100%; max-width:560px; padding:0; overflow:hidden;
 }
-.palette-item.active, .palette-item:hover{background:var(--bg-3);}
-.palette-item .pf{
-  width:22px;height:22px;border-radius:6px;background:var(--bg-2);
-  display:flex;align-items:center;justify-content:center;flex:0 0 auto;overflow:hidden;
+.cmdk-input-row{ display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line); }
+.cmdk-input-row span{ color:var(--cyan); }
+.cmdk-input-row input{
+  flex:1; background:transparent; border:none; font-size:15px; color:var(--text); padding:4px 0;
 }
-.palette-item .pf img{width:14px;height:14px;}
-.palette-item .pname{font-size:13.5px; color:var(--text-hi);}
-.palette-item .purl{font-size:11px; color:var(--text-low); margin-left:auto; font-family:var(--font-mono);}
-.palette-empty{padding:24px; text-align:center; color:var(--text-low); font-size:13px;}
-.palette-footer{
-  display:flex;
-  gap:16px;
-  padding:10px 18px;
-  border-top:1px solid var(--line);
-  font-size:11px;
-  color:var(--text-low);
-  font-family:var(--font-mono);
+.cmdk-input-row input:focus{ outline:none; }
+.cmdk-results{ max-height:360px; overflow-y:auto; }
+.cmdk-item{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 16px; cursor:pointer; font-size:13px;
+  border-left:2px solid transparent;
 }
-.palette-footer span{display:flex;align-items:center;gap:5px;}
-.palette-footer kbd{
-  background:var(--bg-2);
-  border:1px solid var(--line);
-  border-radius:4px;
-  padding:1px 5px;
+.cmdk-item .favicon-wrap{ width:22px; height:22px; border-radius:4px; flex-shrink:0; }
+.cmdk-item .favicon-wrap img{ width:13px; height:13px; }
+.cmdk-item .meta{ overflow:hidden; }
+.cmdk-item .meta .n{ color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cmdk-item .meta .u{ color:var(--text-faint); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cmdk-item.active{ background:rgba(56,244,255,.1); border-left-color:var(--cyan); }
+.cmdk-empty{ padding:16px; color:var(--text-dim); font-size:12px; }
+.cmdk-footer{
+  display:flex; gap:14px; padding:8px 16px; border-top:1px solid var(--line);
+  color:var(--text-faint); font-size:10px; text-transform:uppercase; letter-spacing:.06em;
 }
 
-/* ---------- Toast ---------- */
-.toast{
-  position:fixed;
-  bottom:24px; left:50%;
-  transform:translate(-50%, 20px);
-  background:var(--bg-2);
-  border:1px solid var(--line);
-  color:var(--text-hi);
-  padding:12px 20px;
-  border-radius:var(--radius-m);
-  font-size:13px;
-  opacity:0;
-  pointer-events:none;
-  transition:all .25s var(--ease);
-  z-index:300;
-  box-shadow:0 10px 30px rgba(0,0,0,.4);
-}
-.toast.show{opacity:1; transform:translate(-50%, 0);}
-
-/* ---------- Screen-reader only text ---------- */
+/* visually hidden but accessible */
 .sr-only{
-  position:absolute; width:1px; height:1px;
-  padding:0; margin:-1px; overflow:hidden;
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
   clip:rect(0,0,0,0); white-space:nowrap; border:0;
-}
-
-/* ---------- Scrollbars (subtle) ---------- */
-::-webkit-scrollbar{width:8px; height:8px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px;}
-::-webkit-scrollbar-thumb:hover{background:var(--amber-dim);}
-
-/* ---------- Mobile ---------- */
-@media (max-width: 560px){
-  .header{flex-direction:column;}
-  .header .clock{text-align:left;}
-  .brand-title{font-size:22px;}
-  .clock-time{font-size:28px;}
-  .wrap{padding:18px 14px 60px;}
-  .search-input{font-size:15px;}
-  .kbd-hint{display:none;}
-  .bookmark-grid{grid-template-columns:repeat(auto-fill, minmax(120px,1fr));}
 }
 </style>
 </head>
 <body>
 
-<!-- Signature background: quiet animated node network -->
-<canvas id="bg-canvas" aria-hidden="true"></canvas>
-<div class="bg-vignette" aria-hidden="true"></div>
+<div class="grid-bg" aria-hidden="true"></div>
+<div class="grid-glow" aria-hidden="true"></div>
 
-<div class="wrap">
+<main class="console">
 
-  <!-- =========================================================
-       1. HEADER — dashboard title, greeting, live clock
-  ========================================================== -->
-  <header class="header">
-    <div class="brand">
-      <span class="brand-eyebrow">Personal Dashboard</span>
-      <h1 class="brand-title">แผงควบคุมของฉัน</h1>
-      <p class="brand-greeting" id="greeting-text">กำลังโหลด...</p>
+  <!-- ============================== STATISTICS PANEL ============================== -->
+  <section class="row stats" aria-label="Statistics">
+    <div class="stat-card hud-frame">
+      <span class="label">Bookmarks</span>
+      <span class="value" id="statBookmarks">0</span>
     </div>
-    <div class="clock" aria-live="off">
-      <div class="clock-time" id="clock-time">--:--<span class="sec">:--</span></div>
-      <div class="clock-date" id="clock-date">-</div>
+    <div class="stat-card hud-frame magenta">
+      <span class="label">Categories</span>
+      <span class="value" id="statCategories">0</span>
     </div>
-  </header>
-
-  <!-- =========================================================
-       2. UNIVERSAL SEARCH
-  ========================================================== -->
-  <section class="search-section">
-    <form class="search-box" id="search-form" role="search">
-      <span class="search-icon" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      </span>
-      <label for="search-input" class="sr-only">ค้นหาผ่าน Google</label>
-      <input type="text" id="search-input" class="search-input" placeholder="ค้นหาด้วย Google หรือพิมพ์ URL..." autocomplete="off">
-      <span class="kbd-hint" aria-hidden="true">Ctrl K เพื่อโฟกัส</span>
-    </form>
+    <div class="stat-card hud-frame">
+      <span class="label">System Time</span>
+      <span class="value" id="statTime">--:--:--</span>
+    </div>
+    <div class="stat-card hud-frame magenta">
+      <span class="label">Quick URLs</span>
+      <span class="value" id="statQuickUrls">0</span>
+    </div>
   </section>
 
-  <div class="main-grid">
-    <!-- =========================================================
-         LEFT: BOOKMARK MANAGER
-    ========================================================== -->
-    <section>
-      <div class="section-heading">
-        <h2>Bookmarks</h2>
-        <div style="display:flex; gap:8px;">
-          <button class="btn" id="manage-cat-btn" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            หมวดหมู่
-          </button>
-          <button class="btn btn-primary" id="add-bookmark-btn" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-            เพิ่ม Bookmark
-          </button>
+  <div class="row main">
+    <!-- ============================== BOOKMARKS ============================== -->
+    <section class="panel hud-frame" aria-label="Bookmark manager">
+      <div class="panel-head">
+        <h2 class="panel-title"><span class="dot" aria-hidden="true"></span>Bookmarks</h2>
+        <div class="panel-actions">
+          <button type="button" id="btnManageCats">Categories</button>
+          <button type="button" class="primary" id="btnAddBookmark">+ Add Bookmark</button>
         </div>
       </div>
 
-      <!-- Category filter tabs -->
-      <div class="cat-tabs" id="cat-tabs" role="tablist" aria-label="หมวดหมู่ Bookmark"></div>
+      <div class="tabs" id="categoryTabs" role="tablist" aria-label="Filter bookmarks by category"></div>
 
-      <!-- Bookmark card grid (drag & drop enabled) -->
-      <div class="bookmark-grid" id="bookmark-grid" aria-live="polite"></div>
+      <div class="bookmark-grid" id="bookmarkGrid" aria-live="polite"></div>
     </section>
 
-    <!-- =========================================================
-         RIGHT: SIDEBAR — Stats + Quick URL
-    ========================================================== -->
-    <aside class="sidebar">
-
-      <!-- 8. Statistics Panel -->
-      <div class="panel">
-        <h3 class="panel-title">สถิติ</h3>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value" id="stat-bookmarks">0</div>
-            <div class="stat-label">Bookmark ทั้งหมด</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value" id="stat-categories">0</div>
-            <div class="stat-label">หมวดหมู่</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value" id="stat-time">--:--</div>
-            <div class="stat-label">เวลาปัจจุบัน</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value" id="stat-quick-urls">0</div>
-            <div class="stat-label">Quick URL</div>
-          </div>
-        </div>
+    <!-- ============================== QUICK URL ============================== -->
+    <section class="panel hud-frame" aria-label="Quick URL saver">
+      <div class="panel-head">
+        <h2 class="panel-title"><span class="dot" aria-hidden="true"></span>Quick URL</h2>
       </div>
-
-      <!-- 6. Quick URL — paste a link, save it, click to open. Add many. -->
-      <div class="panel">
-        <h3 class="panel-title">Quick URL</h3>
-        <form id="quick-url-form" class="quick-url-form">
-          <label for="quick-url-input" class="sr-only">วาง URL เพื่อบันทึก</label>
-          <input type="text" id="quick-url-input" class="quick-url-input" placeholder="วางลิงก์ที่นี่แล้วกด Enter..." autocomplete="off">
-          <button type="submit" class="btn btn-primary btn-icon-only" aria-label="บันทึกลิงก์">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-          </button>
-        </form>
-        <div id="quick-url-list" class="quick-url-list"></div>
-      </div>
-
-      <!-- Backup / Restore — export & import all data as JSON -->
-      <div class="panel">
-        <h3 class="panel-title">Backup</h3>
-        <div class="backup-row">
-          <button type="button" class="btn" id="export-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Export
-          </button>
-          <button type="button" class="btn" id="import-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 0l-4 4m4-4l4 4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Import
-          </button>
-        </div>
-        <input type="file" id="import-file-input" accept="application/json,.json" class="sr-only" aria-hidden="true">
-        <p class="backup-hint">Export ข้อมูลทั้งหมด (Bookmark, หมวดหมู่, Quick URL) เป็นไฟล์ .json สำรอง หรือ Import กลับเพื่อกู้คืน</p>
-
-        <div class="danger-zone">
-          <button type="button" class="btn btn-full-danger" id="reset-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            รีเซ็ตข้อมูลทั้งหมด
-          </button>
-          <p class="backup-hint">ลบ Bookmark, หมวดหมู่ และ Quick URL ทั้งหมด แล้วกลับไปใช้ค่าเริ่มต้น — แนะนำให้ Export สำรองไว้ก่อน</p>
-        </div>
-      </div>
-
-    </aside>
+      <form class="quick-form" id="quickForm">
+        <label for="quickInput" class="sr-only">Paste a URL to save</label>
+        <input type="text" id="quickInput" placeholder="Paste link, press Enter…" autocomplete="off">
+        <button type="submit">Save</button>
+      </form>
+      <div class="quick-list" id="quickList" aria-live="polite"></div>
+    </section>
   </div>
-</div>
 
-<!-- =========================================================
-     MODAL: Add / Edit Bookmark
-========================================================== -->
-<div class="modal-overlay" id="bm-modal-overlay">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bm-modal-title">
-    <h3 id="bm-modal-title">เพิ่ม Bookmark</h3>
-    <form id="bm-form">
+  <!-- ============================== TOOLBAR ============================== -->
+  <section class="toolbar" aria-label="Backup and reset controls">
+    <button type="button" id="btnExport">⤓ Export Backup</button>
+    <button type="button" id="btnImport">⤒ Import Backup</button>
+    <input type="file" id="fileImport" accept=".json" class="sr-only" aria-hidden="true">
+    <button type="button" class="danger" id="btnReset">⌫ Reset All Data</button>
+  </section>
+
+  <p class="hint">Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (<kbd>⌘</kbd>+<kbd>K</kbd> on Mac) to open the command palette</p>
+</main>
+
+<!-- ============================== MODAL: ADD/EDIT BOOKMARK ============================== -->
+<div class="modal-overlay" id="bookmarkModalOverlay" hidden>
+  <div class="modal hud-frame" role="dialog" aria-modal="true" aria-labelledby="bookmarkModalTitle">
+    <h2 id="bookmarkModalTitle">Add Bookmark</h2>
+    <form id="bookmarkForm">
+      <input type="hidden" id="bmId">
       <div class="field">
-        <label for="bm-name-input">ชื่อ</label>
-        <input type="text" id="bm-name-input" required placeholder="เช่น Gmail">
+        <label for="bmName">Name</label>
+        <input type="text" id="bmName" required autocomplete="off">
       </div>
       <div class="field">
-        <label for="bm-url-input">URL</label>
-        <input type="url" id="bm-url-input" required placeholder="https://example.com">
+        <label for="bmUrl">URL</label>
+        <input type="text" id="bmUrl" placeholder="https://example.com" required autocomplete="off">
       </div>
       <div class="field">
-        <label for="bm-cat-input">หมวดหมู่</label>
-        <select id="bm-cat-input"></select>
+        <label for="bmCategory">Category</label>
+        <select id="bmCategory"></select>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn" id="bm-cancel-btn">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary" id="bm-save-btn">บันทึก</button>
+        <button type="button" id="btnBookmarkCancel">Cancel</button>
+        <button type="submit" class="primary">Save Bookmark</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- =========================================================
-     MODAL: Manage Categories — add new / delete existing
-========================================================== -->
-<div class="modal-overlay" id="cat-modal-overlay">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title">
-    <h3 id="cat-modal-title">จัดการหมวดหมู่</h3>
-
-    <div class="field">
-      <label for="new-cat-input">เพิ่มหมวดหมู่ใหม่</label>
-      <div style="display:flex; gap:8px;">
-        <input type="text" id="new-cat-input" placeholder="เช่น Finance" style="flex:1;">
-        <button type="button" class="btn btn-primary" id="add-cat-btn">เพิ่ม</button>
-      </div>
-    </div>
-
-    <div class="field">
-      <label>หมวดหมู่ทั้งหมด</label>
-      <div id="cat-manage-list" style="display:flex; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto;"></div>
-    </div>
-
+<!-- ============================== MODAL: MANAGE CATEGORIES ============================== -->
+<div class="modal-overlay" id="catModalOverlay" hidden>
+  <div class="modal hud-frame" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
+    <h2 id="catModalTitle">Manage Categories</h2>
+    <div class="cat-manage-list" id="catManageList"></div>
+    <form class="field" id="catAddForm" style="flex-direction:row; gap:8px;">
+      <input type="text" id="catAddInput" placeholder="New category name" autocomplete="off" style="flex:1;">
+      <button type="submit">Add</button>
+    </form>
     <div class="modal-actions">
-      <button type="button" class="btn btn-primary" id="cat-modal-close-btn">เสร็จสิ้น</button>
+      <button type="button" id="btnCatDone" class="primary">Done</button>
     </div>
   </div>
 </div>
 
-<!-- =========================================================
-     COMMAND PALETTE (Ctrl+K)
-========================================================== -->
-<div class="palette-overlay" id="palette-overlay">
-  <div class="palette" role="dialog" aria-modal="true" aria-label="Command Palette">
-    <div class="palette-input-row">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input type="text" id="palette-input" placeholder="ค้นหา Bookmark หรือคำสั่ง..." autocomplete="off">
-    </div>
-    <div class="palette-results" id="palette-results"></div>
-    <div class="palette-footer">
-      <span><kbd>↑↓</kbd> เลือก</span>
-      <span><kbd>Enter</kbd> เปิด</span>
-      <span><kbd>Esc</kbd> ปิด</span>
+<!-- ============================== MODAL: IMPORT CONFIRM ============================== -->
+<div class="modal-overlay" id="importModalOverlay" hidden>
+  <div class="modal hud-frame" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+    <h2 id="importModalTitle">Import Backup</h2>
+    <p class="warn-text">This will overwrite all current bookmarks, categories and quick URLs with the contents of the selected file. This cannot be undone.</p>
+    <div class="modal-actions">
+      <button type="button" id="btnImportCancel">Cancel</button>
+      <button type="button" class="danger" id="btnImportConfirm">Overwrite &amp; Import</button>
     </div>
   </div>
 </div>
 
-<!-- Toast notification -->
-<div class="toast" id="toast"></div>
+<!-- ============================== MODAL: RESET CONFIRM ============================== -->
+<div class="modal-overlay" id="resetModalOverlay" hidden>
+  <div class="modal hud-frame" role="dialog" aria-modal="true" aria-labelledby="resetModalTitle">
+    <h2 id="resetModalTitle">Reset All Data</h2>
+    <p class="warn-text">This permanently deletes every bookmark, category and quick URL. Type <strong>RESET</strong> below to confirm.</p>
+    <div class="field">
+      <label for="resetInput" class="sr-only">Type RESET to confirm</label>
+      <input type="text" id="resetInput" placeholder="Type RESET" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="btnResetCancel">Cancel</button>
+      <button type="button" class="danger" id="btnResetConfirm" disabled>Wipe Data</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== COMMAND PALETTE ============================== -->
+<div class="cmdk-overlay" id="cmdkOverlay" hidden>
+  <div class="cmdk-box hud-frame" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="cmdk-input-row">
+      <span aria-hidden="true">⌕</span>
+      <label for="cmdkInput" class="sr-only">Search bookmarks or web</label>
+      <input type="text" id="cmdkInput" placeholder="Search bookmarks, or press Enter to search the web…" autocomplete="off">
+    </div>
+    <div class="cmdk-results" id="cmdkResults" role="listbox"></div>
+    <div class="cmdk-footer">
+      <span>↑↓ Navigate</span>
+      <span>Enter Open</span>
+      <span>Esc Close</span>
+    </div>
+  </div>
+</div>
 
 <script>
-/* ================================================================
-   STATE & STORAGE
-   All persistent data lives in localStorage under a single
-   namespaced key so it's easy to inspect / migrate.
-   ================================================================ */
-const STORAGE_KEY = 'homepage_dashboard_v1';
+(function(){
+  'use strict';
 
-const DEFAULT_CATEGORIES = ['Other'];
+  /* ==========================================================================
+     STORAGE — everything lives under one namespaced key
+     ========================================================================== */
+  const STORAGE_KEY = 'homepage_dashboard_v1';
 
-// No default bookmarks — the dashboard starts empty and the user adds their own.
-
-function loadState(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      // Basic shape validation with graceful fallback
-      if(parsed && Array.isArray(parsed.bookmarks) && Array.isArray(parsed.categories)){
-        return parsed;
-      }
-    }
-  }catch(e){
-    console.warn('ไม่สามารถอ่านข้อมูลจาก localStorage ได้ ใช้ค่าเริ่มต้นแทน', e);
-  }
-  // First run / corrupted data -> build fresh default state (empty bookmarks)
-  return {
-    categories: [...DEFAULT_CATEGORIES],
-    bookmarks: [],
-    quickUrls: [],
-    activeCategory: 'all'
+  const DEFAULT_STATE = {
+    bookmarks: [],   // { id, name, url, category, order }
+    categories: [ { id:'other', name:'Other', locked:true } ],
+    quickUrls: []    // { id, url, createdAt }
   };
-}
 
-let state = loadState();
+  let state = loadState();
 
-function saveState(){
-  try{
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return structuredClone(DEFAULT_STATE);
+      const parsed = JSON.parse(raw);
+      return normalizeState(parsed);
+    }catch(e){
+      console.warn('Failed to load state, starting fresh.', e);
+      return structuredClone(DEFAULT_STATE);
+    }
+  }
+
+  // Fills in sensible defaults for missing fields so older backups never error out.
+  function normalizeState(raw){
+    const out = structuredClone(DEFAULT_STATE);
+    if(raw && Array.isArray(raw.categories) && raw.categories.length){
+      out.categories = raw.categories.map(c => ({
+        id: c.id || cryptoRandomId(),
+        name: c.name || 'Unnamed',
+        locked: !!c.locked
+      }));
+    }
+    // guarantee an unremovable "Other" fallback category exists
+    if(!out.categories.some(c => c.id === 'other')){
+      out.categories.push({ id:'other', name:'Other', locked:true });
+    }
+    out.categories.forEach(c => { if(c.id === 'other') c.locked = true; });
+
+    if(raw && Array.isArray(raw.bookmarks)){
+      out.bookmarks = raw.bookmarks.map((b,i) => ({
+        id: b.id || cryptoRandomId(),
+        name: b.name || b.url || 'Untitled',
+        url: b.url || '',
+        category: (b.category && out.categories.some(c=>c.id===b.category)) ? b.category : 'other',
+        order: typeof b.order === 'number' ? b.order : i
+      }));
+    }
+    if(raw && Array.isArray(raw.quickUrls)){
+      out.quickUrls = raw.quickUrls.map(q => ({
+        id: q.id || cryptoRandomId(),
+        url: q.url || '',
+        createdAt: q.createdAt || Date.now()
+      })).filter(q => q.url);
+    }
+    return out;
+  }
+
+  function saveState(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }catch(e){
-    console.error('บันทึกข้อมูลไม่สำเร็จ (localStorage อาจเต็มหรือถูกปิดใช้งาน)', e);
-    showToast('บันทึกข้อมูลไม่สำเร็จ');
-  }
-}
-
-/* ================================================================
-   TOAST helper
-   ================================================================ */
-let toastTimer = null;
-function showToast(msg){
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
-}
-
-/* ================================================================
-   1. HEADER — real-time clock + date + greeting
-   ================================================================ */
-const THAI_DAYS = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
-const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-
-function pad(n){ return n.toString().padStart(2, '0'); }
-
-function updateClock(){
-  const now = new Date();
-  const h = pad(now.getHours());
-  const m = pad(now.getMinutes());
-  const s = pad(now.getSeconds());
-
-  document.getElementById('clock-time').innerHTML = `${h}:${m}<span class="sec">:${s}</span>`;
-
-  const dateStr = `วัน${THAI_DAYS[now.getDay()]}ที่ ${now.getDate()} ${THAI_MONTHS[now.getMonth()]} ${now.getFullYear() + 543}`;
-  document.getElementById('clock-date').textContent = dateStr;
-  document.getElementById('stat-time').textContent = `${h}:${m}`;
-
-  // Greeting changes by time of day
-  const hour = now.getHours();
-  let greeting;
-  if(hour < 5)       greeting = 'ยังไม่นอนอีกหรือ ดูแลสุขภาพด้วยนะ';
-  else if(hour < 12)  greeting = 'อรุณสวัสดิ์ วันนี้ก็ขอให้เป็นวันที่ดีนะ';
-  else if(hour < 17)  greeting = 'สวัสดีตอนบ่าย พักสายตาบ้างนะ';
-  else if(hour < 21)  greeting = 'สวัสดีตอนเย็น ใกล้จบวันแล้ว สู้ๆ';
-  else                greeting = 'สวัสดีตอนค่ำ อย่าลืมพักผ่อนด้วยนะ';
-  document.getElementById('greeting-text').textContent = greeting;
-}
-updateClock();
-setInterval(updateClock, 1000);
-
-/* ================================================================
-   2. UNIVERSAL SEARCH
-   - Plain query -> Google search
-   - Looks like a URL -> navigate directly
-   ================================================================ */
-const searchForm = document.getElementById('search-form');
-const searchInput = document.getElementById('search-input');
-
-function looksLikeUrl(str){
-  // crude but effective check: has a dot and no spaces, or starts with a protocol
-  return /^(https?:\/\/)/i.test(str) || (/\.[a-z]{2,}$/i.test(str.trim()) && !str.includes(' '));
-}
-
-searchForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const q = searchInput.value.trim();
-  if(!q) return;
-
-  if(looksLikeUrl(q)){
-    const url = /^https?:\/\//i.test(q) ? q : 'https://' + q;
-    window.location.href = url;
-  } else {
-    const url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
-    window.location.href = url;
-  }
-  searchInput.value = '';
-});
-
-/* Ctrl+K focuses the main search box (only handled globally below,
-   because Ctrl+K is also used to open the Command Palette — we open
-   the palette by default since it's the more powerful surface). */
-
-/* ================================================================
-   FAVICON helper
-   Uses Google's public favicon service for automatic favicons.
-   Falls back to a generated initial-letter badge on error.
-   ================================================================ */
-function getFaviconUrl(url){
-  try{
-    const u = new URL(url);
-    return `https://icons.duckduckgo.com/ip3/${u.hostname}.ico`;
-  }catch(e){
-    return '';
-  }
-}
-
-function faviconMarkup(bm){
-  const favUrl = getFaviconUrl(bm.url);
-  const letter = (bm.name || '?').trim().charAt(0).toUpperCase();
-  if(favUrl){
-    return `<img src="${favUrl}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${letter}',style:'font-weight:700;color:var(--text-mid);font-size:14px;'}))">`;
-  }
-  return `<span style="font-weight:700;color:var(--text-mid);font-size:14px;">${letter}</span>`;
-}
-
-/* ================================================================
-   3-5. BOOKMARK MANAGER + CATEGORIES
-   ================================================================ */
-const bookmarkGrid = document.getElementById('bookmark-grid');
-const catTabsEl = document.getElementById('cat-tabs');
-
-function escapeHtml(str){
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function renderCategoryTabs(){
-  const counts = {};
-  state.bookmarks.forEach(b => { counts[b.category] = (counts[b.category] || 0) + 1; });
-
-  let html = `<button type="button" class="cat-tab ${state.activeCategory === 'all' ? 'active' : ''}" data-cat="all" role="tab">
-      ทั้งหมด <span class="count">${state.bookmarks.length}</span>
-    </button>`;
-
-  state.categories.forEach(cat => {
-    html += `<button type="button" class="cat-tab ${state.activeCategory === cat ? 'active' : ''}" data-cat="${escapeHtml(cat)}" role="tab">
-        ${escapeHtml(cat)} <span class="count">${counts[cat] || 0}</span>
-      </button>`;
-  });
-
-  catTabsEl.innerHTML = html;
-
-  catTabsEl.querySelectorAll('.cat-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      state.activeCategory = tab.dataset.cat;
-      saveState();
-      renderCategoryTabs();
-      renderBookmarks();
-    });
-  });
-}
-
-let dragSourceId = null;
-
-/* ================================================================
-   CATEGORY MANAGEMENT — add / delete categories.
-   "Other" is the permanent fallback category: it can't be deleted,
-   and any bookmarks in a deleted category are moved into it so
-   nothing ever gets silently lost.
-   ================================================================ */
-const FALLBACK_CATEGORY = 'Other';
-const catModalOverlay = document.getElementById('cat-modal-overlay');
-const manageCatBtn = document.getElementById('manage-cat-btn');
-const newCatInput = document.getElementById('new-cat-input');
-const addCatBtn = document.getElementById('add-cat-btn');
-const catManageList = document.getElementById('cat-manage-list');
-const catModalCloseBtn = document.getElementById('cat-modal-close-btn');
-
-function ensureFallbackCategoryExists(){
-  if(!state.categories.includes(FALLBACK_CATEGORY)){
-    state.categories.push(FALLBACK_CATEGORY);
-  }
-}
-
-function openCategoryModal(){
-  ensureFallbackCategoryExists();
-  newCatInput.value = '';
-  renamingCategory = null;
-  renderCategoryManageList();
-  catModalOverlay.classList.add('open');
-  setTimeout(() => newCatInput.focus(), 50);
-}
-function closeCategoryModal(){
-  renamingCategory = null;
-  catModalOverlay.classList.remove('open');
-}
-
-let renamingCategory = null; // tracks which category is currently in "editing name" mode
-
-function renderCategoryManageList(){
-  const counts = {};
-  state.bookmarks.forEach(b => { counts[b.category] = (counts[b.category] || 0) + 1; });
-
-  catManageList.innerHTML = state.categories.map(cat => {
-    const isFallback = cat === FALLBACK_CATEGORY;
-    const isRenaming = renamingCategory === cat;
-
-    const nameMarkup = isRenaming
-      ? `<input type="text" class="cat-manage-name-input" data-cat="${escapeHtml(cat)}" value="${escapeHtml(cat)}">`
-      : `<span class="cat-manage-name">${escapeHtml(cat)}</span>
-         <span class="cat-manage-count">${counts[cat] || 0} bookmark</span>`;
-
-    return `
-      <div class="cat-manage-item">
-        <span class="cat-manage-name-group">${nameMarkup}</span>
-        <span class="cat-manage-actions">
-          ${isRenaming
-            ? `<button type="button" class="cat-manage-btn rename-btn" data-action="confirm-rename" data-cat="${escapeHtml(cat)}" title="บันทึกชื่อใหม่">✓</button>`
-            : `<button type="button" class="cat-manage-btn rename-btn" data-action="rename" data-cat="${escapeHtml(cat)}" title="แก้ไขชื่อหมวดหมู่">✎</button>`
-          }
-          <button type="button" class="cat-manage-btn delete-btn" data-action="delete" data-cat="${escapeHtml(cat)}"
-            ${isFallback ? 'disabled title="หมวดหมู่นี้ลบไม่ได้ ใช้เป็นค่าเริ่มต้นเสมอ"' : 'title="ลบหมวดหมู่นี้"'}>
-            ✕
-          </button>
-        </span>
-      </div>`;
-  }).join('');
-
-  // Rename: start editing
-  catManageList.querySelectorAll('[data-action="rename"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      renamingCategory = btn.dataset.cat;
-      renderCategoryManageList();
-      const input = catManageList.querySelector('.cat-manage-name-input');
-      if(input){ input.focus(); input.select(); }
-    });
-  });
-
-  // Rename: confirm via checkmark button
-  catManageList.querySelectorAll('[data-action="confirm-rename"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = catManageList.querySelector('.cat-manage-name-input');
-      if(input) commitCategoryRename(btn.dataset.cat, input.value);
-    });
-  });
-
-  // Rename: input keyboard handling (Enter to save, Escape to cancel)
-  const nameInput = catManageList.querySelector('.cat-manage-name-input');
-  if(nameInput){
-    nameInput.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter'){ e.preventDefault(); commitCategoryRename(nameInput.dataset.cat, nameInput.value); }
-      else if(e.key === 'Escape'){ e.preventDefault(); renamingCategory = null; renderCategoryManageList(); }
-    });
-    // Clicking away also saves, so the user isn't forced to hit the checkmark
-    nameInput.addEventListener('blur', () => {
-      // Small delay so a click on the checkmark button isn't cancelled by blur first
-      setTimeout(() => {
-        if(renamingCategory === nameInput.dataset.cat) commitCategoryRename(nameInput.dataset.cat, nameInput.value);
-      }, 120);
-    });
   }
 
-  // Delete
-  catManageList.querySelectorAll('[data-action="delete"]:not(:disabled)').forEach(btn => {
-    btn.addEventListener('click', () => deleteCategory(btn.dataset.cat));
-  });
-}
-
-function commitCategoryRename(oldName, newNameRaw){
-  const newName = (newNameRaw || '').trim();
-  renamingCategory = null;
-
-  if(!newName || newName === oldName){
-    renderCategoryManageList();
-    return;
+  function cryptoRandomId(){
+    return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,9);
   }
 
-  // Prevent renaming to a name that already exists (case-insensitive), unless it's the fallback being protected
-  const clash = state.categories.some(c => c.toLowerCase() === newName.toLowerCase() && c !== oldName);
-  if(clash){
-    showToast('มีหมวดหมู่ชื่อนี้อยู่แล้ว');
-    renderCategoryManageList();
-    return;
+  /* ==========================================================================
+     URL HELPERS
+     ========================================================================== */
+  function normalizeUrl(input){
+    let v = (input || '').trim();
+    if(!v) return '';
+    if(!/^[a-z][a-z0-9+.-]*:\/\//i.test(v)){
+      v = 'https://' + v;
+    }
+    return v;
   }
 
-  // "Other" is the permanent fallback name and can't be renamed away
-  if(oldName === FALLBACK_CATEGORY){
-    showToast('ไม่สามารถเปลี่ยนชื่อหมวดหมู่นี้ได้');
-    renderCategoryManageList();
-    return;
+  function getDomain(url){
+    try{ return new URL(url).hostname.replace(/^www\./,''); }
+    catch(e){ return ''; }
   }
 
-  // Update the category list and every bookmark pointing at the old name
-  state.categories = state.categories.map(c => c === oldName ? newName : c);
-  state.bookmarks.forEach(b => { if(b.category === oldName) b.category = newName; });
-  if(state.activeCategory === oldName) state.activeCategory = newName;
-
-  saveState();
-  renderCategoryManageList();
-  renderCategoryTabs();
-  renderBookmarks();
-  showToast(`เปลี่ยนชื่อเป็น "${newName}" แล้ว`);
-}
-
-function deleteCategory(cat){
-  if(cat === FALLBACK_CATEGORY) return;
-
-  const affected = state.bookmarks.filter(b => b.category === cat).length;
-  const msg = affected > 0
-    ? `หมวดหมู่ "${cat}" มี ${affected} bookmark — ลบหมวดหมู่นี้แล้ว bookmark เหล่านั้นจะย้ายไปที่ "${FALLBACK_CATEGORY}" ต้องการดำเนินการต่อหรือไม่?`
-    : `ต้องการลบหมวดหมู่ "${cat}" ใช่หรือไม่?`;
-  if(!confirm(msg)) return;
-
-  // Reassign any bookmarks in the deleted category to the fallback
-  state.bookmarks.forEach(b => {
-    if(b.category === cat) b.category = FALLBACK_CATEGORY;
-  });
-  state.categories = state.categories.filter(c => c !== cat);
-
-  // If the deleted category was the active filter, fall back to "all"
-  if(state.activeCategory === cat) state.activeCategory = 'all';
-
-  saveState();
-  renderCategoryManageList();
-  renderCategoryTabs();
-  renderBookmarks();
-  showToast(`ลบหมวดหมู่ "${cat}" แล้ว`);
-}
-
-addCatBtn.addEventListener('click', () => {
-  const name = newCatInput.value.trim();
-  if(!name) return;
-
-  if(state.categories.some(c => c.toLowerCase() === name.toLowerCase())){
-    showToast('มีหมวดหมู่นี้อยู่แล้ว');
-    return;
+  function faviconUrl(url){
+    const domain = getDomain(url);
+    return domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : '';
   }
 
-  state.categories.push(name);
-  saveState();
-  newCatInput.value = '';
-  renderCategoryManageList();
-  renderCategoryTabs();
-  showToast(`เพิ่มหมวดหมู่ "${name}" แล้ว`);
-  newCatInput.focus();
-});
-
-newCatInput.addEventListener('keydown', (e) => {
-  if(e.key === 'Enter'){ e.preventDefault(); addCatBtn.click(); }
-});
-
-manageCatBtn.addEventListener('click', openCategoryModal);
-catModalCloseBtn.addEventListener('click', closeCategoryModal);
-catModalOverlay.addEventListener('click', (e) => { if(e.target === catModalOverlay) closeCategoryModal(); });
-
-
-function renderBookmarks(){
-  const filtered = state.bookmarks
-    .filter(b => state.activeCategory === 'all' || b.category === state.activeCategory)
-    .sort((a, b) => a.order - b.order);
-
-  if(filtered.length === 0){
-    bookmarkGrid.innerHTML = `<div class="empty-state">ยังไม่มี Bookmark ในหมวดหมู่นี้ — กดปุ่ม "เพิ่ม Bookmark" เพื่อเริ่มต้น</div>`;
-    updateStats();
-    return;
+  // Builds a favicon element with graceful fallback to the item's first letter.
+  function buildFavicon(name, url, sizeClass){
+    const wrap = document.createElement('div');
+    wrap.className = 'favicon-wrap';
+    const fav = faviconUrl(url);
+    const img = document.createElement('img');
+    img.alt = '';
+    img.loading = 'lazy';
+    img.src = fav;
+    img.onerror = function(){
+      wrap.innerHTML = '';
+      const fb = document.createElement('span');
+      fb.className = 'favicon-fallback';
+      fb.textContent = (name || '?').trim().charAt(0).toUpperCase() || '?';
+      wrap.appendChild(fb);
+    };
+    if(fav){ wrap.appendChild(img); }
+    else{
+      const fb = document.createElement('span');
+      fb.className = 'favicon-fallback';
+      fb.textContent = (name || '?').trim().charAt(0).toUpperCase() || '?';
+      wrap.appendChild(fb);
+    }
+    return wrap;
   }
 
-  bookmarkGrid.innerHTML = filtered.map(bm => `
-    <div class="bm-card"
-         draggable="true"
-         data-id="${bm.id}"
-         tabindex="0"
-         role="link"
-         aria-label="เปิด ${escapeHtml(bm.name)}">
-      <div class="bm-actions">
-        <button type="button" class="bm-action-btn edit-btn" data-action="edit" data-id="${bm.id}" aria-label="แก้ไข ${escapeHtml(bm.name)}">✎</button>
-        <button type="button" class="bm-action-btn" data-action="delete" data-id="${bm.id}" aria-label="ลบ ${escapeHtml(bm.name)}">✕</button>
-      </div>
-      <div class="bm-favicon">${faviconMarkup(bm)}</div>
-      <div class="bm-name">${escapeHtml(bm.name)}</div>
-      <div class="bm-cat-label">${escapeHtml(bm.category)}</div>
-    </div>
-  `).join('') + `
-    <div class="bm-card bm-add-card" id="inline-add-card" tabindex="0" role="button" aria-label="เพิ่ม Bookmark ใหม่">
-      <span class="plus">+</span>
-      <span style="font-size:12px;">เพิ่ม Bookmark</span>
-    </div>
-  `;
-
-  // Open bookmark on click (ignore clicks that hit the action buttons)
-  bookmarkGrid.querySelectorAll('.bm-card[data-id]').forEach(card => {
-    card.addEventListener('click', (e) => {
-      if(e.target.closest('.bm-action-btn')) return;
-      const bm = state.bookmarks.find(b => b.id === card.dataset.id);
-      if(bm) window.location.href = bm.url;
-    });
-    card.addEventListener('keydown', (e) => {
-      if((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.bm-action-btn')){
-        e.preventDefault();
-        const bm = state.bookmarks.find(b => b.id === card.dataset.id);
-        if(bm) window.location.href = bm.url;
-      }
-    });
-
-    // Drag & drop reordering
-    card.addEventListener('dragstart', () => {
-      dragSourceId = card.dataset.id;
-      card.classList.add('dragging');
-    });
-    card.addEventListener('dragend', () => {
-      card.classList.remove('dragging');
-      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-    });
-    card.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      card.classList.add('drag-over');
-    });
-    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
-    card.addEventListener('drop', (e) => {
-      e.preventDefault();
-      card.classList.remove('drag-over');
-      const targetId = card.dataset.id;
-      if(dragSourceId && targetId && dragSourceId !== targetId){
-        reorderBookmarks(dragSourceId, targetId);
-      }
-    });
-  });
-
-  document.getElementById('inline-add-card')?.addEventListener('click', () => openBookmarkModal());
-  document.getElementById('inline-add-card')?.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openBookmarkModal(); }
-  });
-
-  // Edit / delete buttons
-  bookmarkGrid.querySelectorAll('[data-action="edit"]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openBookmarkModal(btn.dataset.id);
-    });
-  });
-  bookmarkGrid.querySelectorAll('[data-action="delete"]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteBookmark(btn.dataset.id);
-    });
-  });
-
-  updateStats();
-}
-
-function reorderBookmarks(sourceId, targetId){
-  const sorted = state.bookmarks.slice().sort((a,b) => a.order - b.order);
-  const sourceIdx = sorted.findIndex(b => b.id === sourceId);
-  const targetIdx = sorted.findIndex(b => b.id === targetId);
-  if(sourceIdx === -1 || targetIdx === -1) return;
-
-  const [moved] = sorted.splice(sourceIdx, 1);
-  sorted.splice(targetIdx, 0, moved);
-
-  // Reassign order values sequentially
-  sorted.forEach((bm, i) => { bm.order = i; });
-  state.bookmarks = sorted;
-
-  saveState();
-  renderBookmarks();
-}
-
-function deleteBookmark(id){
-  const bm = state.bookmarks.find(b => b.id === id);
-  if(!bm) return;
-  state.bookmarks = state.bookmarks.filter(b => b.id !== id);
-  saveState();
-  renderCategoryTabs();
-  renderBookmarks();
-  showToast(`ลบ "${bm.name}" แล้ว`);
-}
-
-function updateStats(){
-  document.getElementById('stat-bookmarks').textContent = state.bookmarks.length;
-  document.getElementById('stat-categories').textContent = state.categories.length;
-}
-
-/* ---------- Add / Edit Modal ---------- */
-const bmModalOverlay = document.getElementById('bm-modal-overlay');
-const bmForm = document.getElementById('bm-form');
-const bmNameInput = document.getElementById('bm-name-input');
-const bmUrlInput = document.getElementById('bm-url-input');
-const bmCatInput = document.getElementById('bm-cat-input');
-const bmModalTitle = document.getElementById('bm-modal-title');
-let editingBookmarkId = null;
-
-function populateCategorySelect(){
-  bmCatInput.innerHTML = state.categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-}
-
-function openBookmarkModal(id){
-  populateCategorySelect();
-  editingBookmarkId = id || null;
-
-  if(id){
-    const bm = state.bookmarks.find(b => b.id === id);
-    if(!bm) return;
-    bmModalTitle.textContent = 'แก้ไข Bookmark';
-    bmNameInput.value = bm.name;
-    bmUrlInput.value = bm.url;
-    bmCatInput.value = bm.category;
-  } else {
-    bmModalTitle.textContent = 'เพิ่ม Bookmark';
-    bmForm.reset();
-    if(state.activeCategory !== 'all') bmCatInput.value = state.activeCategory;
+  // Navigates the current tab (never a new tab) to the given URL.
+  function navigateSameTab(url){
+    window.location.href = normalizeUrl(url);
   }
 
-  bmModalOverlay.classList.add('open');
-  setTimeout(() => bmNameInput.focus(), 50);
-}
+  /* ==========================================================================
+     DOM REFERENCES
+     ========================================================================== */
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
 
-function closeBookmarkModal(){
-  bmModalOverlay.classList.remove('open');
-  editingBookmarkId = null;
-}
+  const el = {
+    statBookmarks: $('#statBookmarks'),
+    statCategories: $('#statCategories'),
+    statTime: $('#statTime'),
+    statQuickUrls: $('#statQuickUrls'),
 
-document.getElementById('add-bookmark-btn').addEventListener('click', () => openBookmarkModal());
-document.getElementById('bm-cancel-btn').addEventListener('click', closeBookmarkModal);
-bmModalOverlay.addEventListener('click', (e) => { if(e.target === bmModalOverlay) closeBookmarkModal(); });
+    categoryTabs: $('#categoryTabs'),
+    bookmarkGrid: $('#bookmarkGrid'),
 
-bmForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  let name = bmNameInput.value.trim();
-  let url = bmUrlInput.value.trim();
-  const category = bmCatInput.value;
+    quickForm: $('#quickForm'),
+    quickInput: $('#quickInput'),
+    quickList: $('#quickList'),
 
-  if(!name || !url) return;
-  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    btnAddBookmark: $('#btnAddBookmark'),
+    btnManageCats: $('#btnManageCats'),
 
-  if(editingBookmarkId){
-    const bm = state.bookmarks.find(b => b.id === editingBookmarkId);
-    if(bm){ bm.name = name; bm.url = url; bm.category = category; }
-    showToast('แก้ไข Bookmark แล้ว');
-  } else {
-    const maxOrder = state.bookmarks.reduce((m, b) => Math.max(m, b.order), -1);
-    state.bookmarks.push({
-      id: 'bm_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-      name, url, category,
-      order: maxOrder + 1
-    });
-    showToast('เพิ่ม Bookmark แล้ว');
+    bookmarkModalOverlay: $('#bookmarkModalOverlay'),
+    bookmarkForm: $('#bookmarkForm'),
+    bmId: $('#bmId'), bmName: $('#bmName'), bmUrl: $('#bmUrl'), bmCategory: $('#bmCategory'),
+    btnBookmarkCancel: $('#btnBookmarkCancel'),
+
+    catModalOverlay: $('#catModalOverlay'),
+    catManageList: $('#catManageList'),
+    catAddForm: $('#catAddForm'),
+    catAddInput: $('#catAddInput'),
+    btnCatDone: $('#btnCatDone'),
+
+    btnExport: $('#btnExport'),
+    btnImport: $('#btnImport'),
+    fileImport: $('#fileImport'),
+    importModalOverlay: $('#importModalOverlay'),
+    btnImportCancel: $('#btnImportCancel'),
+    btnImportConfirm: $('#btnImportConfirm'),
+
+    btnReset: $('#btnReset'),
+    resetModalOverlay: $('#resetModalOverlay'),
+    resetInput: $('#resetInput'),
+    btnResetCancel: $('#btnResetCancel'),
+    btnResetConfirm: $('#btnResetConfirm'),
+
+    cmdkOverlay: $('#cmdkOverlay'),
+    cmdkInput: $('#cmdkInput'),
+    cmdkResults: $('#cmdkResults'),
+  };
+
+  let activeCategoryFilter = 'all';
+
+  /* ==========================================================================
+     RENDER: STATISTICS
+     ========================================================================== */
+  function renderStats(){
+    el.statBookmarks.textContent = state.bookmarks.length;
+    el.statCategories.textContent = state.categories.length;
+    el.statQuickUrls.textContent = state.quickUrls.length;
   }
 
-  saveState();
-  renderCategoryTabs();
-  renderBookmarks();
-  closeBookmarkModal();
-});
-
-/* ================================================================
-   6. QUICK URL — paste a link, save it to a list, click to open.
-   Supports adding as many links as needed. Stored in state.quickUrls.
-   ================================================================ */
-const quickUrlForm = document.getElementById('quick-url-form');
-const quickUrlInput = document.getElementById('quick-url-input');
-const quickUrlListEl = document.getElementById('quick-url-list');
-
-// Migrate/initialize: older saved states won't have this array yet
-if(!Array.isArray(state.quickUrls)) state.quickUrls = [];
-
-function normalizeUrl(raw){
-  let url = raw.trim();
-  if(!url) return '';
-  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
-  return url;
-}
-
-function renderQuickUrls(){
-  document.getElementById('stat-quick-urls').textContent = state.quickUrls.length;
-
-  if(state.quickUrls.length === 0){
-    quickUrlListEl.innerHTML = `<div class="quick-url-empty">ยังไม่มีลิงก์ที่บันทึกไว้ — วาง URL ด้านบนแล้วกด Enter</div>`;
-    return;
-  }
-
-  // Newest link first, so the thing you just pasted is easy to find
-  const sorted = state.quickUrls.slice().sort((a, b) => b.createdAt - a.createdAt);
-
-  quickUrlListEl.innerHTML = sorted.map(item => `
-    <div class="quick-url-item" data-id="${item.id}" tabindex="0" role="link" aria-label="เปิด ${escapeHtml(item.url)}">
-      <span class="quick-url-favicon">${faviconMarkup({ name: item.url, url: item.url })}</span>
-      <span class="quick-url-text">${escapeHtml(item.url)}</span>
-      <button type="button" class="quick-url-delete" data-id="${item.id}" aria-label="ลบลิงก์นี้">✕</button>
-    </div>
-  `).join('');
-
-  quickUrlListEl.querySelectorAll('.quick-url-item').forEach(el => {
-    el.addEventListener('click', (e) => {
-      if(e.target.closest('.quick-url-delete')) return;
-      const item = state.quickUrls.find(q => q.id === el.dataset.id);
-      if(item) window.location.href = item.url;
-    });
-    el.addEventListener('keydown', (e) => {
-      if((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.quick-url-delete')){
-        e.preventDefault();
-        const item = state.quickUrls.find(q => q.id === el.dataset.id);
-        if(item) window.location.href = item.url;
-      }
-    });
-  });
-
-  quickUrlListEl.querySelectorAll('.quick-url-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      state.quickUrls = state.quickUrls.filter(q => q.id !== btn.dataset.id);
-      saveState();
-      renderQuickUrls();
-    });
-  });
-}
-
-quickUrlForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const url = normalizeUrl(quickUrlInput.value);
-  if(!url) return;
-
-  state.quickUrls.push({
-    id: 'qu_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-    url,
-    createdAt: Date.now()
-  });
-  saveState();
-  quickUrlInput.value = '';
-  renderQuickUrls();
-  showToast('บันทึกลิงก์แล้ว');
-});
-
-renderQuickUrls();
-
-/* ================================================================
-   BACKUP — Export state to a downloadable .json file,
-   and Import a previously exported file back into localStorage.
-   ================================================================ */
-const exportBtn = document.getElementById('export-btn');
-const importBtn = document.getElementById('import-btn');
-const importFileInput = document.getElementById('import-file-input');
-
-exportBtn.addEventListener('click', () => {
-  try{
-    // Pretty-printed JSON so it's readable if the user opens it manually
-    const json = JSON.stringify(state, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    // Build a friendly filename with today's date, e.g. dashboard-backup-2026-07-09.json
+  function tickClock(){
     const now = new Date();
-    const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    el.statTime.textContent = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  }
+  setInterval(tickClock, 1000);
+  tickClock();
 
+  /* ==========================================================================
+     RENDER: CATEGORY TABS
+     ========================================================================== */
+  function renderCategoryTabs(){
+    el.categoryTabs.innerHTML = '';
+
+    const allTab = makeTab('all', 'All', state.bookmarks.length);
+    el.categoryTabs.appendChild(allTab);
+
+    state.categories.forEach(cat => {
+      const count = state.bookmarks.filter(b => b.category === cat.id).length;
+      el.categoryTabs.appendChild(makeTab(cat.id, cat.name, count));
+    });
+
+    function makeTab(id, name, count){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tab' + (activeCategoryFilter === id ? ' active' : '');
+      btn.setAttribute('role','tab');
+      btn.setAttribute('aria-selected', activeCategoryFilter === id ? 'true' : 'false');
+      btn.innerHTML = `<span>${escapeHtml(name)}</span><span class="count">${count}</span>`;
+      btn.addEventListener('click', () => {
+        activeCategoryFilter = id;
+        renderCategoryTabs();
+        renderBookmarkGrid();
+      });
+      return btn;
+    }
+  }
+
+  /* ==========================================================================
+     RENDER: BOOKMARK GRID (with drag & drop reorder)
+     ========================================================================== */
+  let dragSourceId = null;
+
+  function renderBookmarkGrid(){
+    el.bookmarkGrid.innerHTML = '';
+
+    const list = state.bookmarks
+      .filter(b => activeCategoryFilter === 'all' || b.category === activeCategoryFilter)
+      .sort((a,b) => a.order - b.order);
+
+    if(list.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = `<span class="big">No bookmarks yet</span>Add your first bookmark to populate this grid.`;
+      el.bookmarkGrid.appendChild(empty);
+      return;
+    }
+
+    list.forEach(bm => {
+      const cat = state.categories.find(c => c.id === bm.category);
+      const card = document.createElement('div');
+      card.className = 'bookmark-card hud-frame';
+      card.draggable = true;
+      card.dataset.id = bm.id;
+      card.tabIndex = 0;
+
+      const link = document.createElement('a');
+      link.className = 'bookmark-link';
+      link.href = normalizeUrl(bm.url);
+      link.setAttribute('aria-label', `Open bookmark ${bm.name}`);
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigateSameTab(bm.url);
+      });
+
+      const fav = buildFavicon(bm.name, bm.url);
+      const name = document.createElement('div');
+      name.className = 'bm-name';
+      name.textContent = bm.name;
+      const catLabel = document.createElement('div');
+      catLabel.className = 'bm-cat';
+      catLabel.textContent = cat ? cat.name : 'Other';
+
+      const controls = document.createElement('div');
+      controls.className = 'bm-controls';
+      const editBtn = document.createElement('button');
+      editBtn.className = 'icon-btn'; editBtn.type = 'button'; editBtn.textContent = '✎';
+      editBtn.setAttribute('aria-label', `Edit ${bm.name}`);
+      editBtn.addEventListener('click', (e) => { e.stopPropagation(); openBookmarkModal(bm); });
+      const delBtn = document.createElement('button');
+      delBtn.className = 'icon-btn danger'; delBtn.type = 'button'; delBtn.textContent = '✕';
+      delBtn.setAttribute('aria-label', `Delete ${bm.name}`);
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if(confirm(`Delete bookmark "${bm.name}"?`)){
+          state.bookmarks = state.bookmarks.filter(b => b.id !== bm.id);
+          saveState(); renderAll();
+        }
+      });
+      controls.appendChild(editBtn);
+      controls.appendChild(delBtn);
+
+      card.appendChild(link);
+      card.appendChild(fav);
+      card.appendChild(name);
+      card.appendChild(catLabel);
+      card.appendChild(controls);
+
+      // drag & drop reordering
+      card.addEventListener('dragstart', () => { dragSourceId = bm.id; });
+      card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drag-over'); });
+      card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+      card.addEventListener('drop', (e) => {
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        if(!dragSourceId || dragSourceId === bm.id) return;
+        reorderBookmarks(dragSourceId, bm.id);
+      });
+
+      el.bookmarkGrid.appendChild(card);
+    });
+  }
+
+  function reorderBookmarks(sourceId, targetId){
+    const ordered = state.bookmarks.slice().sort((a,b) => a.order - b.order);
+    const fromIdx = ordered.findIndex(b => b.id === sourceId);
+    const toIdx = ordered.findIndex(b => b.id === targetId);
+    if(fromIdx === -1 || toIdx === -1) return;
+    const [moved] = ordered.splice(fromIdx, 1);
+    ordered.splice(toIdx, 0, moved);
+    ordered.forEach((b,i) => b.order = i);
+    saveState();
+    renderBookmarkGrid();
+  }
+
+  /* ==========================================================================
+     BOOKMARK MODAL (add / edit)
+     ========================================================================== */
+  function populateCategorySelect(select, selectedId){
+    select.innerHTML = '';
+    state.categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = cat.name;
+      if(cat.id === selectedId) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
+  function openBookmarkModal(bookmark){
+    populateCategorySelect(el.bmCategory, bookmark ? bookmark.category : 'other');
+    el.bmId.value = bookmark ? bookmark.id : '';
+    el.bmName.value = bookmark ? bookmark.name : '';
+    el.bmUrl.value = bookmark ? bookmark.url : '';
+    $('#bookmarkModalTitle').textContent = bookmark ? 'Edit Bookmark' : 'Add Bookmark';
+    showModal(el.bookmarkModalOverlay);
+    el.bmName.focus();
+  }
+
+  el.btnAddBookmark.addEventListener('click', () => openBookmarkModal(null));
+  el.btnBookmarkCancel.addEventListener('click', () => hideModal(el.bookmarkModalOverlay));
+
+  el.bookmarkForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = el.bmId.value;
+    const name = el.bmName.value.trim();
+    const url = normalizeUrl(el.bmUrl.value.trim());
+    const category = el.bmCategory.value;
+    if(!name || !url) return;
+
+    if(id){
+      const bm = state.bookmarks.find(b => b.id === id);
+      if(bm){ bm.name = name; bm.url = url; bm.category = category; }
+    } else {
+      const maxOrder = state.bookmarks.reduce((m,b) => Math.max(m,b.order), -1);
+      state.bookmarks.push({ id: cryptoRandomId(), name, url, category, order: maxOrder + 1 });
+    }
+    saveState();
+    hideModal(el.bookmarkModalOverlay);
+    renderAll();
+  });
+
+  /* ==========================================================================
+     CATEGORY MANAGEMENT MODAL
+     ========================================================================== */
+  function renderCatManageList(){
+    el.catManageList.innerHTML = '';
+    state.categories.forEach(cat => {
+      const row = document.createElement('div');
+      row.className = 'cat-row';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = cat.name;
+      input.disabled = cat.locked;
+      input.setAttribute('aria-label', `Rename category ${cat.name}`);
+      input.addEventListener('change', () => {
+        const val = input.value.trim();
+        if(val){ cat.name = val; saveState(); renderAll(); }
+        else{ input.value = cat.name; }
+      });
+      row.appendChild(input);
+
+      if(cat.locked){
+        const lock = document.createElement('span');
+        lock.className = 'locked';
+        lock.textContent = 'Default';
+        row.appendChild(lock);
+      } else {
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'icon-btn danger';
+        del.textContent = '✕';
+        del.setAttribute('aria-label', `Delete category ${cat.name}`);
+        del.addEventListener('click', () => deleteCategory(cat));
+        row.appendChild(del);
+      }
+      el.catManageList.appendChild(row);
+    });
+  }
+
+  function deleteCategory(cat){
+    const affected = state.bookmarks.filter(b => b.category === cat.id).length;
+    const msg = affected > 0
+      ? `Delete category "${cat.name}"? ${affected} bookmark(s) will move to "Other".`
+      : `Delete category "${cat.name}"?`;
+    if(!confirm(msg)) return;
+
+    state.bookmarks.forEach(b => { if(b.category === cat.id) b.category = 'other'; });
+    state.categories = state.categories.filter(c => c.id !== cat.id);
+    if(activeCategoryFilter === cat.id) activeCategoryFilter = 'all';
+    saveState();
+    renderCatManageList();
+    renderAll();
+  }
+
+  el.btnManageCats.addEventListener('click', () => {
+    renderCatManageList();
+    showModal(el.catModalOverlay);
+    el.catAddInput.focus();
+  });
+  el.btnCatDone.addEventListener('click', () => hideModal(el.catModalOverlay));
+
+  el.catAddForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = el.catAddInput.value.trim();
+    if(!name) return;
+    state.categories.push({ id: cryptoRandomId(), name, locked:false });
+    el.catAddInput.value = '';
+    saveState();
+    renderCatManageList();
+    renderAll();
+  });
+
+  /* ==========================================================================
+     QUICK URL
+     ========================================================================== */
+  function renderQuickList(){
+    el.quickList.innerHTML = '';
+    const list = state.quickUrls.slice().sort((a,b) => b.createdAt - a.createdAt);
+
+    if(list.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.style.padding = '20px 8px';
+      empty.textContent = 'No quick URLs saved yet.';
+      el.quickList.appendChild(empty);
+      return;
+    }
+
+    list.forEach(q => {
+      const item = document.createElement('div');
+      item.className = 'quick-item';
+
+      const link = document.createElement('a');
+      link.className = 'qu-link';
+      link.href = normalizeUrl(q.url);
+      link.setAttribute('aria-label', `Open ${q.url}`);
+      link.addEventListener('click', (e) => { e.preventDefault(); navigateSameTab(q.url); });
+
+      const fav = buildFavicon(q.url, q.url);
+      const urlSpan = document.createElement('span');
+      urlSpan.className = 'qu-url';
+      urlSpan.textContent = q.url;
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'icon-btn danger';
+      del.textContent = '✕';
+      del.setAttribute('aria-label', `Delete quick URL ${q.url}`);
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.quickUrls = state.quickUrls.filter(x => x.id !== q.id);
+        saveState(); renderAll();
+      });
+
+      item.appendChild(link);
+      item.appendChild(fav);
+      item.appendChild(urlSpan);
+      item.appendChild(del);
+      el.quickList.appendChild(item);
+    });
+  }
+
+  el.quickForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const raw = el.quickInput.value.trim();
+    if(!raw) return;
+    const url = normalizeUrl(raw);
+    state.quickUrls.push({ id: cryptoRandomId(), url, createdAt: Date.now() });
+    el.quickInput.value = '';
+    saveState();
+    renderAll();
+  });
+
+  /* ==========================================================================
+     MODAL HELPERS
+     ========================================================================== */
+  function showModal(overlay){
+    overlay.hidden = false;
+  }
+  function hideModal(overlay){
+    overlay.hidden = true;
+  }
+  $$('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if(e.target === overlay) hideModal(overlay);
+    });
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){
+      $$('.modal-overlay').forEach(o => { if(!o.hidden) hideModal(o); });
+    }
+  });
+
+  /* ==========================================================================
+     BACKUP: EXPORT / IMPORT
+     ========================================================================== */
+  el.btnExport.addEventListener('click', () => {
+    const dateStr = new Date().toISOString().slice(0,10);
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dashboard-backup-${stamp}.json`;
+    a.download = `nexus-backup-${dateStr}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  });
 
-    showToast('ดาวน์โหลดไฟล์สำรองแล้ว');
-  }catch(e){
-    console.error('Export ล้มเหลว', e);
-    showToast('Export ไม่สำเร็จ');
-  }
-});
+  let pendingImportData = null;
 
-importBtn.addEventListener('click', () => importFileInput.click());
-
-importFileInput.addEventListener('change', (e) => {
-  const file = e.target.files && e.target.files[0];
-  if(!file) return;
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    try{
-      const parsed = JSON.parse(reader.result);
-
-      // Validate shape before trusting it — same check as loadState()
-      if(!parsed || !Array.isArray(parsed.bookmarks) || !Array.isArray(parsed.categories)){
-        showToast('ไฟล์ไม่ถูกต้อง หรือไม่ใช่ไฟล์สำรองของ Dashboard นี้');
-        return;
+  el.btnImport.addEventListener('click', () => el.fileImport.click());
+  el.fileImport.addEventListener('change', () => {
+    const file = el.fileImport.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const parsed = JSON.parse(reader.result);
+        if(typeof parsed !== 'object' || parsed === null){
+          throw new Error('Invalid backup structure');
+        }
+        pendingImportData = parsed;
+        showModal(el.importModalOverlay);
+      }catch(err){
+        alert('That file could not be read as a valid backup (invalid JSON structure).');
       }
+      el.fileImport.value = '';
+    };
+    reader.readAsText(file);
+  });
 
-      const confirmed = confirm('การ Import จะแทนที่ Bookmark, หมวดหมู่ และ Quick URL ปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?');
-      if(!confirmed) return;
+  el.btnImportCancel.addEventListener('click', () => {
+    pendingImportData = null;
+    hideModal(el.importModalOverlay);
+  });
 
-      state = parsed;
-      // Reset filter to "all" in case the imported categories differ
-      state.activeCategory = 'all';
-      // Guard against older backup files that predate the Quick URL feature
-      if(!Array.isArray(state.quickUrls)) state.quickUrls = [];
+  el.btnImportConfirm.addEventListener('click', () => {
+    if(pendingImportData){
+      state = normalizeState(pendingImportData);
       saveState();
-
-      // Re-render every part of the UI that depends on state
-      renderCategoryTabs();
-      renderBookmarks();
-      renderQuickUrls();
-
-      showToast('Import ข้อมูลสำเร็จ');
-    }catch(err){
-      console.error('Import ล้มเหลว', err);
-      showToast('ไม่สามารถอ่านไฟล์นี้ได้ — ตรวจสอบว่าเป็นไฟล์ JSON ที่ถูกต้อง');
-    }finally{
-      // Reset the input so selecting the same file again still fires 'change'
-      importFileInput.value = '';
+      renderAll();
     }
-  };
-  reader.onerror = () => {
-    showToast('อ่านไฟล์ไม่สำเร็จ');
-    importFileInput.value = '';
-  };
-  reader.readAsText(file);
-});
-
-/* ================================================================
-   RESET — wipe localStorage and restore default state.
-   Destructive and unrecoverable (unless the user has a backup file),
-   so this requires typing a confirmation word, not just clicking OK.
-   ================================================================ */
-const resetBtn = document.getElementById('reset-btn');
-
-resetBtn.addEventListener('click', () => {
-  const firstConfirm = confirm('ต้องการลบ Bookmark, หมวดหมู่ และ Quick URL ทั้งหมด แล้วกลับไปใช้ค่าเริ่มต้นใช่หรือไม่?\n\nแนะนำให้กด Export สำรองข้อมูลก่อน หากยังไม่ได้ทำ');
-  if(!firstConfirm) return;
-
-  const typed = prompt('การกระทำนี้ไม่สามารถย้อนกลับได้ พิมพ์คำว่า "RESET" (ตัวพิมพ์ใหญ่) เพื่อยืนยัน:');
-  if(typed !== 'RESET'){
-    showToast('ยกเลิกการรีเซ็ต');
-    return;
-  }
-
-  try{
-    localStorage.removeItem(STORAGE_KEY);
-    showToast('รีเซ็ตข้อมูลสำเร็จ กำลังโหลดหน้าใหม่...');
-    setTimeout(() => location.reload(), 700);
-  }catch(e){
-    console.error('รีเซ็ตล้มเหลว', e);
-    showToast('รีเซ็ตไม่สำเร็จ');
-  }
-});
-
-/* ================================================================
-   7. COMMAND PALETTE (Ctrl+K)
-   ================================================================ */
-const paletteOverlay = document.getElementById('palette-overlay');
-const paletteInput = document.getElementById('palette-input');
-const paletteResults = document.getElementById('palette-results');
-let paletteActiveIndex = 0;
-let paletteMatches = [];
-
-function openPalette(){
-  paletteOverlay.classList.add('open');
-  paletteInput.value = '';
-  renderPaletteResults('');
-  setTimeout(() => paletteInput.focus(), 50);
-}
-function closePalette(){
-  paletteOverlay.classList.remove('open');
-}
-
-function renderPaletteResults(query){
-  const q = query.trim().toLowerCase();
-  paletteMatches = state.bookmarks
-    .filter(b => !q || b.name.toLowerCase().includes(q) || b.url.toLowerCase().includes(q) || b.category.toLowerCase().includes(q))
-    .sort((a,b) => a.order - b.order);
-
-  paletteActiveIndex = 0;
-
-  if(paletteMatches.length === 0){
-    paletteResults.innerHTML = `<div class="palette-empty">ไม่พบ Bookmark ที่ตรงกัน — กด Enter เพื่อค้นหาผ่าน Google แทน</div>`;
-    return;
-  }
-
-  paletteResults.innerHTML = paletteMatches.map((bm, i) => `
-    <div class="palette-item ${i === 0 ? 'active' : ''}" data-index="${i}">
-      <span class="pf">${faviconMarkup(bm)}</span>
-      <span class="pname">${escapeHtml(bm.name)}</span>
-      <span class="purl">${escapeHtml(bm.category)}</span>
-    </div>
-  `).join('');
-
-  paletteResults.querySelectorAll('.palette-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const bm = paletteMatches[Number(item.dataset.index)];
-      if(bm){ window.location.href = bm.url; closePalette(); }
-    });
-    item.addEventListener('mouseenter', () => {
-      paletteActiveIndex = Number(item.dataset.index);
-      highlightPaletteActive();
-    });
+    pendingImportData = null;
+    hideModal(el.importModalOverlay);
   });
-}
 
-function highlightPaletteActive(){
-  paletteResults.querySelectorAll('.palette-item').forEach(item => {
-    item.classList.toggle('active', Number(item.dataset.index) === paletteActiveIndex);
+  /* ==========================================================================
+     RESET ALL DATA (requires typing confirmation word)
+     ========================================================================== */
+  el.btnReset.addEventListener('click', () => {
+    el.resetInput.value = '';
+    el.btnResetConfirm.disabled = true;
+    showModal(el.resetModalOverlay);
+    el.resetInput.focus();
   });
-  const activeEl = paletteResults.querySelector('.palette-item.active');
-  if(activeEl) activeEl.scrollIntoView({ block: 'nearest' });
-}
+  el.resetInput.addEventListener('input', () => {
+    el.btnResetConfirm.disabled = el.resetInput.value.trim().toUpperCase() !== 'RESET';
+  });
+  el.btnResetCancel.addEventListener('click', () => hideModal(el.resetModalOverlay));
+  el.btnResetConfirm.addEventListener('click', () => {
+    if(el.resetInput.value.trim().toUpperCase() !== 'RESET') return;
+    state = structuredClone(DEFAULT_STATE);
+    activeCategoryFilter = 'all';
+    saveState();
+    hideModal(el.resetModalOverlay);
+    renderAll();
+  });
 
-paletteInput.addEventListener('input', () => renderPaletteResults(paletteInput.value));
+  /* ==========================================================================
+     COMMAND PALETTE (Ctrl/Cmd+K)
+     ========================================================================== */
+  let cmdkActiveIndex = -1;
+  let cmdkMatches = [];
 
-paletteInput.addEventListener('keydown', (e) => {
-  if(e.key === 'ArrowDown'){
-    e.preventDefault();
-    if(paletteMatches.length){
-      paletteActiveIndex = (paletteActiveIndex + 1) % paletteMatches.length;
-      highlightPaletteActive();
-    }
-  } else if(e.key === 'ArrowUp'){
-    e.preventDefault();
-    if(paletteMatches.length){
-      paletteActiveIndex = (paletteActiveIndex - 1 + paletteMatches.length) % paletteMatches.length;
-      highlightPaletteActive();
-    }
-  } else if(e.key === 'Enter'){
-    e.preventDefault();
-    if(paletteMatches.length){
-      const bm = paletteMatches[paletteActiveIndex];
-      window.location.href = bm.url;
-      closePalette();
-    } else if(paletteInput.value.trim()){
-      window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(paletteInput.value.trim());
-      closePalette();
-    }
-  } else if(e.key === 'Escape'){
-    closePalette();
+  function openCmdk(){
+    el.cmdkInput.value = '';
+    showModal(el.cmdkOverlay);
+    renderCmdkResults('');
+    el.cmdkInput.focus();
   }
-});
-
-paletteOverlay.addEventListener('click', (e) => { if(e.target === paletteOverlay) closePalette(); });
-
-/* ================================================================
-   GLOBAL KEYBOARD SHORTCUTS
-   Ctrl+K / Cmd+K -> open Command Palette
-   Escape         -> close any open overlay
-   ================================================================ */
-document.addEventListener('keydown', (e) => {
-  const isCtrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
-  if(isCtrlK){
-    e.preventDefault();
-    if(paletteOverlay.classList.contains('open')){
-      closePalette();
-    } else {
-      openPalette();
-    }
-    return;
-  }
-  if(e.key === 'Escape'){
-    if(bmModalOverlay.classList.contains('open')) closeBookmarkModal();
-    if(catModalOverlay.classList.contains('open')) closeCategoryModal();
-  }
-});
-
-/* ================================================================
-   9. BACKGROUND ANIMATION — lightweight node network on canvas
-   Design notes:
-   - Particle count is capped and scaled down on small screens
-   - Uses requestAnimationFrame, pauses when tab is hidden
-   - devicePixelRatio capped at 1.5 to avoid huge canvases on hi-DPI
-   ================================================================ */
-(function backgroundAnimation(){
-  const canvas = document.getElementById('bg-canvas');
-  const ctx = canvas.getContext('2d');
-  let width, height, dpr;
-  let nodes = [];
-  let animId = null;
-  let isVisible = true;
-
-  const NODE_COLOR = 'rgba(224,164,88,0.55)';
-  const LINE_COLOR = 'rgba(224,164,88,';
-  const LINK_DIST = 130;
-
-  function sizeCanvas(){
-    dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    width = window.innerWidth;
-    height = window.innerHeight;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = width + 'px';
-    canvas.style.height = height + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  function closeCmdk(){
+    hideModal(el.cmdkOverlay);
   }
 
-  function initNodes(){
-    // Fewer nodes on small screens to keep it light
-    const count = width < 700 ? 22 : 42;
-    nodes = Array.from({ length: count }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.25,
-      vy: (Math.random() - 0.5) * 0.25,
-      r: Math.random() * 1.4 + 0.6
-    }));
+  function renderCmdkResults(query){
+    const q = query.trim().toLowerCase();
+    cmdkMatches = !q ? [] : state.bookmarks.filter(b => {
+      const cat = state.categories.find(c => c.id === b.category);
+      return b.name.toLowerCase().includes(q)
+        || b.url.toLowerCase().includes(q)
+        || (cat && cat.name.toLowerCase().includes(q));
+    }).slice(0, 30);
+
+    cmdkActiveIndex = cmdkMatches.length ? 0 : -1;
+    paintCmdkResults(q);
   }
 
-  function step(){
-    ctx.clearRect(0, 0, width, height);
+  function paintCmdkResults(q){
+    el.cmdkResults.innerHTML = '';
 
-    // Update positions with gentle drift + wrap-around edges
-    for(const n of nodes){
-      n.x += n.vx;
-      n.y += n.vy;
-      if(n.x < -20) n.x = width + 20;
-      if(n.x > width + 20) n.x = -20;
-      if(n.y < -20) n.y = height + 20;
-      if(n.y > height + 20) n.y = -20;
+    if(!q){
+      const empty = document.createElement('div');
+      empty.className = 'cmdk-empty';
+      empty.textContent = 'Type to search your bookmarks, or press Enter to search the web.';
+      el.cmdkResults.appendChild(empty);
+      return;
     }
 
-    // Draw connecting lines between nearby nodes
-    for(let i = 0; i < nodes.length; i++){
-      for(let j = i + 1; j < nodes.length; j++){
-        const a = nodes[i], b = nodes[j];
-        const dx = a.x - b.x, dy = a.y - b.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if(dist < LINK_DIST){
-          const alpha = (1 - dist / LINK_DIST) * 0.16;
-          ctx.strokeStyle = LINE_COLOR + alpha + ')';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
+    if(cmdkMatches.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'cmdk-empty';
+      empty.textContent = `No bookmarks matched "${q}". Press Enter to search the web instead.`;
+      el.cmdkResults.appendChild(empty);
+      return;
+    }
+
+    cmdkMatches.forEach((bm, i) => {
+      const row = document.createElement('div');
+      row.className = 'cmdk-item' + (i === cmdkActiveIndex ? ' active' : '');
+      row.setAttribute('role','option');
+      row.setAttribute('aria-selected', i === cmdkActiveIndex ? 'true':'false');
+      const fav = buildFavicon(bm.name, bm.url);
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.innerHTML = `<div class="n"></div><div class="u"></div>`;
+      meta.querySelector('.n').textContent = bm.name;
+      meta.querySelector('.u').textContent = bm.url;
+      row.appendChild(fav);
+      row.appendChild(meta);
+      row.addEventListener('click', () => { navigateSameTab(bm.url); closeCmdk(); });
+      row.addEventListener('mousemove', () => {
+        if(cmdkActiveIndex !== i){ cmdkActiveIndex = i; paintCmdkResults(q); }
+      });
+      el.cmdkResults.appendChild(row);
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    const isK = e.key === 'k' || e.key === 'K';
+    if((e.ctrlKey || e.metaKey) && isK){
+      e.preventDefault();
+      if(el.cmdkOverlay.hidden) openCmdk(); else closeCmdk();
+    }
+  });
+
+  el.cmdkInput.addEventListener('input', () => renderCmdkResults(el.cmdkInput.value));
+
+  el.cmdkInput.addEventListener('keydown', (e) => {
+    if(e.key === 'ArrowDown'){
+      e.preventDefault();
+      if(cmdkMatches.length){
+        cmdkActiveIndex = (cmdkActiveIndex + 1) % cmdkMatches.length;
+        paintCmdkResults(el.cmdkInput.value.trim().toLowerCase());
+      }
+    } else if(e.key === 'ArrowUp'){
+      e.preventDefault();
+      if(cmdkMatches.length){
+        cmdkActiveIndex = (cmdkActiveIndex - 1 + cmdkMatches.length) % cmdkMatches.length;
+        paintCmdkResults(el.cmdkInput.value.trim().toLowerCase());
+      }
+    } else if(e.key === 'Enter'){
+      e.preventDefault();
+      if(cmdkMatches.length && cmdkActiveIndex >= 0){
+        navigateSameTab(cmdkMatches[cmdkActiveIndex].url);
+        closeCmdk();
+      } else {
+        const q = el.cmdkInput.value.trim();
+        if(q){
+          navigateSameTab('https://www.google.com/search?q=' + encodeURIComponent(q));
+          closeCmdk();
         }
       }
+    } else if(e.key === 'Escape'){
+      closeCmdk();
     }
-
-    // Draw nodes
-    ctx.fillStyle = NODE_COLOR;
-    for(const n of nodes){
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    if(isVisible) animId = requestAnimationFrame(step);
-  }
-
-  function start(){
-    if(!animId && isVisible) animId = requestAnimationFrame(step);
-  }
-  function stop(){
-    if(animId){ cancelAnimationFrame(animId); animId = null; }
-  }
-
-  // Respect reduced-motion preference: render a single static frame only
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  sizeCanvas();
-  initNodes();
-
-  if(prefersReducedMotion){
-    step(); // draw one static frame
-    isVisible = false; // prevent further rAF loops
-  } else {
-    start();
-  }
-
-  window.addEventListener('resize', () => {
-    sizeCanvas();
-    initNodes();
   });
 
-  document.addEventListener('visibilitychange', () => {
-    isVisible = !document.hidden;
-    if(isVisible && !prefersReducedMotion) start();
-    else stop();
+  el.cmdkOverlay.addEventListener('click', (e) => {
+    if(e.target === el.cmdkOverlay) closeCmdk();
   });
+
+  /* ==========================================================================
+     UTIL
+     ========================================================================== */
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  /* ==========================================================================
+     MASTER RENDER
+     ========================================================================== */
+  function renderAll(){
+    renderStats();
+    renderCategoryTabs();
+    renderBookmarkGrid();
+    renderQuickList();
+  }
+
+  renderAll();
+
 })();
-
-/* ================================================================
-   INITIAL RENDER
-   ================================================================ */
-ensureFallbackCategoryExists();
-renderCategoryTabs();
-renderBookmarks();
-updateStats();
-
-// Focus search on load for quick keyboard-first usage (desktop only,
-// skipped on touch devices to avoid popping the mobile keyboard).
-if(!('ontouchstart' in window)){
-  searchInput.focus();
-}
 </script>
 </body>
 </html>
