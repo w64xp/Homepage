@@ -1,1276 +1,1418 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Home</title>
+<title>Bookmarks — Field Camera</title>
+
 <style>
-/* ==========================================================================
-   TOKENS — cyberpunk HUD palette
-   ========================================================================== */
+/* ============================================================
+   DESIGN TOKENS — "Vintage Film Camera" direction
+   Base: bakelite-black camera body, aged brass fittings
+   Accent: Kodak-gold film-box orange, warm darkroom red
+   Type: condensed engraved caps for chrome labels (letter-spaced
+         system sans, since no external fonts are allowed),
+         monospace for exposure-counter style numbers
+   Signature: bookmarks styled as film negative frames with
+              sprocket holes; canvas film-grain + light-leak sweep
+   ============================================================ */
 :root{
-  --bg-void:#05060a;
-  --bg-void-2:#0a0d16;
-  --panel:rgba(13,17,28,.62);
-  --panel-solid:#0d111c;
-  --cyan:#38f4ff;
-  --cyan-dim:#38f4ff55;
-  --magenta:#ff2fb0;
-  --magenta-dim:#ff2fb055;
-  --amber:#ffb020;
-  --text:#dff6ff;
-  --text-dim:#7b93a3;
-  --text-faint:#4d6272;
-  --danger:#ff3860;
-  --line:rgba(56,244,255,.14);
-  --radius:2px;
-  --font-display: "Segoe UI Semibold", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Cascadia Code", "SF Mono", "Consolas", ui-monospace, "Courier New", monospace;
+  --body-black:#1a1613;     /* camera body / deepest background */
+  --body-black-2:#211c18;   /* slightly raised body panel */
+  --leather:#2b241f;        /* card / leatherette surface */
+  --leather-hi:#352c25;     /* hover / raised leatherette */
+  --seam:#3d332b;           /* stitch / hairline border */
+  --seam-soft:#2f2822;
+  --paper:#ece3cd;          /* primary text — bleached print paper */
+  --paper-dim:#a99a80;      /* secondary text — aged paper */
+  --paper-low:#6e6152;      /* tertiary text — shadowed paper */
+  --brass:#c8973f;          /* aged brass fitting */
+  --brass-hi:#e3b563;
+  --film-orange:#c8672f;    /* Kodak-gold film-box accent (signature) */
+  --film-orange-glow:rgba(200,103,47,0.22);
+  --darkroom-red:#8a3b32;   /* safelight red, used sparingly */
+  --ok:#7c9a6d;
+  --radius-l:4px;            /* cameras don't have rounded plastic corners */
+  --radius-m:3px;
+  --radius-s:2px;
+  --font-ui: 'Segoe UI', system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --ease: cubic-bezier(.22,.61,.36,1);
 }
-a {
-  text-decoration: none;
-}
-/* ==========================================================================
-   RESET & BASE
-   ========================================================================== */
-*,*::before,*::after{ box-sizing:border-box; }
-html,body{ height:100%; }
+
+*{box-sizing:border-box;}
+html,body{height:100%;}
 body{
   margin:0;
-  background:var(--bg-void);
-  color:var(--text);
-  font-family:var(--font-mono);
-  min-height:100vh;
-  overflow-x:hidden;
+  background:var(--body-black);
+  color:var(--paper);
+  font-family:var(--font-ui);
   -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
 }
 
-/* animated digital grid background */
-.grid-bg{
-  position:fixed; inset:0; z-index:-2;
-  background-image:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size:42px 42px;
-  animation:gridDrift 40s linear infinite;
-  mask-image:radial-gradient(ellipse at center, black 0%, transparent 85%);
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
 }
-.grid-glow{
-  position:fixed; inset:0; z-index:-1;
-  background:
-    radial-gradient(ellipse 60% 40% at 15% 0%, var(--cyan-dim), transparent 60%),
-    radial-gradient(ellipse 60% 40% at 85% 100%, var(--magenta-dim), transparent 60%);
+
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;}
+
+:focus-visible{
+  outline:2px solid var(--film-orange);
+  outline-offset:2px;
+  border-radius:2px;
+}
+
+/* ============================================================
+   SIGNATURE — film grain canvas + light-leak sweep + vignette.
+   Grain is drawn once to the canvas as static noise (cheap: no
+   per-frame redraw needed) and blended with mix-blend-mode.
+   A slow light-leak gradient drifts across the top corner on a
+   long CSS animation loop — quiet, not distracting.
+   ============================================================ */
+#grain-canvas{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  opacity:0.05;
+  mix-blend-mode:overlay;
   pointer-events:none;
 }
-@keyframes gridDrift{
-  from{ background-position:0 0, 0 0; }
-  to{ background-position:42px 42px, 42px 42px; }
+.bg-vignette{
+  position:fixed;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse 900px 600px at 8% -8%, rgba(200,103,47,0.10), transparent 55%),
+    radial-gradient(ellipse 700px 500px at 100% 108%, rgba(140,60,50,0.07), transparent 55%),
+    radial-gradient(ellipse 1400px 900px at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%);
 }
-@media (prefers-reduced-motion: reduce){
-  .grid-bg{ animation:none; }
-  *{ scroll-behavior:auto !important; }
+.bg-light-leak{
+  position:fixed;
+  top:-30%; left:-20%;
+  width:70%; height:140%;
+  z-index:1;
+  pointer-events:none;
+  background:linear-gradient(115deg,
+    rgba(200,103,47,0.16) 0%,
+    rgba(200,103,47,0.05) 35%,
+    transparent 60%);
+  filter:blur(40px);
+  animation:leak-drift 26s ease-in-out infinite alternate;
 }
-
-/* scrollbar */
-::-webkit-scrollbar{ width:10px; height:10px; }
-::-webkit-scrollbar-track{ background:var(--bg-void-2); }
-::-webkit-scrollbar-thumb{ background:var(--cyan-dim); border-radius:4px; }
-
-/* ==========================================================================
-   HUD FRAME — corner-bracket signature element, built from gradients only
-   ========================================================================== */
-.hud-frame{
-  position:relative;
-  background-color:var(--panel);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  border:1px solid rgba(56,244,255,.18);
-  background-image:
-    linear-gradient(var(--cyan), var(--cyan)), linear-gradient(var(--cyan), var(--cyan)),
-    linear-gradient(var(--cyan), var(--cyan)), linear-gradient(var(--cyan), var(--cyan)),
-    linear-gradient(var(--magenta), var(--magenta)), linear-gradient(var(--magenta), var(--magenta)),
-    linear-gradient(var(--magenta), var(--magenta)), linear-gradient(var(--magenta), var(--magenta));
-  background-repeat:no-repeat;
-  background-size:16px 2px, 2px 16px, 16px 2px, 2px 16px, 16px 2px, 2px 16px, 16px 2px, 2px 16px;
-  background-position:
-    top 0 left 0, top 0 left 0,
-    top 0 right 0, top 0 right 0,
-    bottom 0 left 0, bottom 0 left 0,
-    bottom 0 right 0, bottom 0 right 0;
+@keyframes leak-drift{
+  0%{ transform:translate(-4%, -2%) rotate(0deg); opacity:.75; }
+  100%{ transform:translate(6%, 4%) rotate(4deg); opacity:1; }
 }
 
-/* ==========================================================================
+/* ============================================================
    LAYOUT
-   ========================================================================== */
-.console{
-  max-width:1320px;
+   ============================================================ */
+.wrap{
+  position:relative;
+  z-index:2;
+  max-width:1180px;
   margin:0 auto;
-  padding:20px 20px 60px;
-  display:grid;
-  gap:18px;
-}
-.row{ display:grid; gap:18px; }
-.row.stats{ grid-template-columns:repeat(4, 1fr); }
-.row.main{ grid-template-columns:2.1fr 1fr; align-items:start; }
-@media (max-width:900px){
-  .row.stats{ grid-template-columns:repeat(2,1fr); }
-  .row.main{ grid-template-columns:1fr; }
+  padding:36px 24px 80px;
 }
 
-/* ==========================================================================
-   STAT CARDS
-   ========================================================================== */
-.stat-card{
-  padding:14px 16px;
-  display:flex; flex-direction:column; gap:6px;
+/* ---------- Masthead: minimal camera-body strip ---------- */
+.masthead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:0 4px 28px;
+  margin-bottom:8px;
+  border-bottom:1px solid var(--seam);
 }
-.stat-card .label{
-  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--text-dim); font-family:var(--font-display);
+.masthead-brand{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
 }
-.stat-card .value{
-  font-size:26px; font-weight:600; color:var(--cyan);
-  text-shadow:0 0 12px var(--cyan-dim);
-  font-variant-numeric:tabular-nums;
+.masthead-brand .lens-dot{
+  width:9px;height:9px;
+  border-radius:50%;
+  background:var(--film-orange);
+  box-shadow:0 0 10px var(--film-orange-glow), inset 0 0 0 2px rgba(0,0,0,.25);
+  flex:0 0 auto;
 }
-.stat-card.magenta .value{ color:var(--magenta); text-shadow:0 0 12px var(--magenta-dim); }
-
-/* ==========================================================================
-   SECTION / PANEL COMMON
-   ========================================================================== */
-.panel{
-  padding:18px;
-}
-.panel-head{
-  display:flex; align-items:center; justify-content:space-between;
-  gap:10px; margin-bottom:14px; flex-wrap:wrap;
-}
-.panel-title{
-  font-family:var(--font-display); font-size:14px; letter-spacing:.16em;
-  text-transform:uppercase; color:var(--text);
-  display:flex; align-items:center; gap:8px;
-}
-.panel-title .dot{
-  width:7px; height:7px; border-radius:50%;
-  background:var(--cyan); box-shadow:0 0 8px 2px var(--cyan);
-}
-.panel-actions{ display:flex; gap:8px; flex-wrap:wrap; }
-
-/* ==========================================================================
-   BUTTONS
-   ========================================================================== */
-button, .btn{
-  font-family:var(--font-mono);
-  background:transparent;
-  color:var(--cyan);
-  border:1px solid var(--cyan-dim);
-  padding:8px 14px;
-  font-size:12px;
+.masthead-title{
+  font-size:19px;
+  font-weight:700;
   letter-spacing:.06em;
-  cursor:pointer;
-  border-radius:var(--radius);
-  transition:background .15s ease, box-shadow .15s ease, color .15s ease;
   text-transform:uppercase;
+  color:var(--paper);
 }
-button:hover, .btn:hover{
-  background:rgba(56,244,255,.1);
-  box-shadow:0 0 14px var(--cyan-dim);
-}
-button.magenta{ color:var(--magenta); border-color:var(--magenta-dim); }
-button.magenta:hover{ background:rgba(255,47,176,.1); box-shadow:0 0 14px var(--magenta-dim); }
-button.danger{ color:var(--danger); border-color:rgba(255,56,96,.4); }
-button.danger:hover{ background:rgba(255,56,96,.12); box-shadow:0 0 14px rgba(255,56,96,.4); }
-button.primary{ background:rgba(56,244,255,.12); }
-button:disabled{ opacity:.4; cursor:not-allowed; }
-button:focus-visible, a:focus-visible, input:focus-visible, .item:focus-visible, [tabindex]:focus-visible{
-  outline:2px solid var(--amber);
-  outline-offset:2px;
-}
-
-input, select{
+.masthead-counter{
   font-family:var(--font-mono);
-  background:var(--bg-void-2);
-  border:1px solid var(--line);
-  color:var(--text);
-  padding:9px 10px;
-  border-radius:var(--radius);
-  font-size:13px;
-}
-input::placeholder{ color:var(--text-faint); }
-input:focus, select:focus{ border-color:var(--cyan); }
-
-/* ==========================================================================
-   CATEGORY TABS
-   ========================================================================== */
-.tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
-.tab{
-  padding:6px 12px; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
-  border:1px solid var(--line); color:var(--text-dim); cursor:pointer;
-  border-radius:var(--radius); background:rgba(255,255,255,.02);
-  display:flex; align-items:center; gap:6px;
-}
-.tab .count{
-  background:rgba(56,244,255,.12); color:var(--cyan);
-  padding:1px 6px; border-radius:8px; font-size:10px;
-}
-.tab.active{
-  color:var(--cyan); border-color:var(--cyan);
-  box-shadow:0 0 10px var(--cyan-dim);
-  background:rgba(56,244,255,.08);
+  font-size:12px;
+  color:var(--paper-low);
+  letter-spacing:.05em;
 }
 
-/* ==========================================================================
-   BOOKMARK GRID
-   ========================================================================== */
+/* ---------- Section headers ---------- */
+.section-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:0 4px 16px;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.section-heading h2{
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.24em;
+  text-transform:uppercase;
+  color:var(--paper-dim);
+  margin:0;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.section-heading h2::before{
+  content:"";
+  width:14px;height:1px;
+  background:var(--film-orange);
+}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+  border:1px solid var(--seam);
+  background:var(--leather);
+  color:var(--paper);
+  padding:9px 14px;
+  border-radius:var(--radius-s);
+  font-size:12.5px;
+  font-weight:600;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  transition:background .2s var(--ease), border-color .2s var(--ease), transform .15s var(--ease);
+}
+.btn:hover{background:var(--leather-hi); border-color:#4a3e33;}
+.btn:active{transform:scale(0.97);}
+.btn-primary{
+  background:var(--film-orange);
+  border-color:var(--film-orange);
+  color:#221208;
+}
+.btn-primary:hover{background:#d97a41; border-color:#d97a41;}
+.btn-icon-only{padding:9px;}
+.btn-danger:hover{background:rgba(138,59,50,0.25); border-color:var(--darkroom-red); color:#e0a89e;}
+
+/* ---------- Main grid: bookmarks (left) + sidebar (right) ---------- */
+.main-grid{
+  display:grid;
+  grid-template-columns: 1fr 320px;
+  gap:28px;
+  align-items:start;
+}
+@media (max-width: 900px){
+  .main-grid{grid-template-columns: 1fr;}
+}
+
+/* ============================================================
+   BOOKMARK GRID — signature element: each bookmark is a film
+   negative frame. Sprocket holes run along the top and bottom
+   edge, and the "frame number" doubles as a subtle index.
+   ============================================================ */
 .bookmark-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(150px,1fr));
-  gap:12px;
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap:16px;
 }
-.bookmark-card{
+.bm-card{
   position:relative;
-  padding:14px 10px 10px;
-  display:flex; flex-direction:column; align-items:center; gap:8px;
+  background:var(--leather);
+  border:1px solid var(--seam);
+  border-radius:var(--radius-m);
+  padding:20px 14px 14px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
   text-align:center;
   cursor:grab;
-  transition:transform .12s ease;
+  transition:transform .18s var(--ease), border-color .18s var(--ease), background .18s var(--ease);
+  animation: frame-in .35s var(--ease) both;
 }
-.bookmark-card:hover{ transform:translateY(-3px); }
-.bookmark-card:active{ cursor:grabbing; }
-.bookmark-card.drag-over{ outline:1px dashed var(--magenta); }
-.favicon-wrap{
-  width:40px; height:40px; border-radius:8px;
-  display:flex; align-items:center; justify-content:center;
-  background:var(--bg-void-2); border:1px solid var(--line);
-  overflow:hidden; flex-shrink:0;
+@keyframes frame-in{
+  from{opacity:0; transform:translateY(6px);}
+  to{opacity:1; transform:translateY(0);}
 }
-.favicon-wrap img{ width:22px; height:22px; object-fit:contain; }
-.favicon-fallback{
-  font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--cyan);
+.bm-card:hover{
+  border-color:var(--brass);
+  background:var(--leather-hi);
+  transform:translateY(-3px);
 }
+.bm-card.dragging{ opacity:.4; cursor:grabbing; }
+.bm-card.drag-over{
+  border-color:var(--film-orange);
+  box-shadow:0 0 0 3px var(--film-orange-glow);
+}
+/* Sprocket holes — top and bottom edge, like 35mm film stock */
+.bm-card::before, .bm-card::after{
+  content:"";
+  position:absolute;
+  left:0; right:0;
+  height:10px;
+  background-image:radial-gradient(circle, var(--body-black) 2.6px, transparent 2.7px);
+  background-size:16px 10px;
+  background-repeat:repeat-x;
+  background-position:6px center;
+  opacity:.9;
+}
+.bm-card::before{ top:0; }
+.bm-card::after{ bottom:0; }
+.bm-frame-number{
+  position:absolute;
+  top:12px; left:8px;
+  font-family:var(--font-mono);
+  font-size:9px;
+  color:var(--paper-low);
+  letter-spacing:.04em;
+}
+.bm-favicon{
+  width:34px;height:34px;
+  border-radius:3px;
+  background:var(--body-black-2);
+  border:1px solid var(--seam-soft);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  flex:0 0 auto;
+  margin-top:4px;
+}
+.bm-favicon img{width:20px;height:20px;object-fit:contain;}
 .bm-name{
-  font-size:12px; color:var(--text); word-break:break-word;
+  font-size:13px;
+  font-weight:600;
+  color:var(--paper);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
   max-width:100%;
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
-.bm-cat{ font-size:9px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; }
-.bm-controls{
-  position:absolute; top:6px; right:6px; display:flex; gap:4px;
-  opacity:0; transition:opacity .12s ease;
+.bm-url-label{
+  font-size:10px;
+  color:var(--paper-low);
+  font-family:var(--font-mono);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
 }
-.bookmark-card:hover .bm-controls, .bookmark-card:focus-within .bm-controls{ opacity:1; }
-.icon-btn{
-  width:22px; height:22px; padding:0; display:flex; align-items:center; justify-content:center;
-  font-size:11px; border-radius:50%;
+.bm-actions{
+  position:absolute;
+  top:12px; right:8px;
+  display:flex;
+  gap:4px;
+  opacity:0;
+  transition:opacity .15s var(--ease);
 }
-.bookmark-link{
-  position:absolute; inset:0; border-radius:inherit;
+.bm-card:hover .bm-actions, .bm-card:focus-within .bm-actions{opacity:1;}
+.bm-action-btn{
+  width:22px;height:22px;
+  border-radius:2px;
+  border:none;
+  background:var(--body-black-2);
+  color:var(--paper-dim);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  font-size:12px;
 }
+.bm-action-btn:hover{background:var(--darkroom-red); color:#fff;}
+.bm-action-btn.edit-btn:hover{background:var(--film-orange); color:#221208;}
+
+.bm-add-card{
+  border-style:dashed;
+  color:var(--paper-low);
+  cursor:pointer;
+  min-height:108px;
+  justify-content:center;
+}
+.bm-add-card:hover{color:var(--film-orange); border-color:var(--brass);}
+.bm-add-card .plus{font-size:22px; line-height:1;}
+
 .empty-state{
   grid-column:1/-1;
-  text-align:center; padding:40px 16px;
-  color:var(--text-dim); font-size:13px;
-}
-.empty-state .big{ font-size:20px; color:var(--cyan); margin-bottom:8px; display:block; }
-
-/* ==========================================================================
-   QUICK URL LIST
-   ========================================================================== */
-.quick-form{ display:flex; gap:8px; margin-bottom:14px; }
-.quick-form input{ flex:1; }
-.quick-list{ display:flex; flex-direction:column; gap:6px; max-height:360px; overflow-y:auto; }
-.quick-item{
-  position:relative;
-  display:flex; align-items:center; gap:10px;
-  padding:9px 10px; border:1px solid var(--line); border-radius:var(--radius);
-  background:rgba(255,255,255,.02);
-}
-.quick-item .favicon-wrap{ width:26px; height:26px; border-radius:5px; flex-shrink:0; }
-.quick-item .favicon-wrap img{ width:15px; height:15px; }
-.quick-item .qu-url{
-  flex:1; font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-.quick-item a.qu-link{ position:absolute; inset:0; border-radius:inherit; }
-.quick-item .icon-btn{ position:relative; z-index:1; opacity:0; }
-.quick-item:hover .icon-btn, .quick-item:focus-within .icon-btn{ opacity:1; }
-
-/* ==========================================================================
-   FOOTER TOOLBAR
-   ========================================================================== */
-.toolbar{
-  display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
-  padding:14px 0 4px;
-}
-.hint{
-  text-align:center; color:var(--text-faint); font-size:11px; letter-spacing:.04em;
-}
-.hint kbd{
-  background:var(--bg-void-2); border:1px solid var(--line); border-radius:3px;
-  padding:1px 6px; color:var(--cyan);
+  text-align:center;
+  padding:48px 20px;
+  color:var(--paper-low);
+  font-size:13px;
+  border:1px dashed var(--seam);
+  border-radius:var(--radius-m);
 }
 
-/* ==========================================================================
-   MODALS
-   ========================================================================== */
+/* ---------- Sidebar ---------- */
+.sidebar{
+  display:flex;
+  flex-direction:column;
+  gap:22px;
+}
+.panel{
+  background:var(--leather);
+  border:1px solid var(--seam);
+  border-radius:var(--radius-m);
+  padding:18px;
+}
+.panel-title{
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--paper-dim);
+  margin:0 0 14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.panel-title::before{
+  content:"";
+  width:14px;height:1px;
+  background:var(--brass);
+}
+
+/* Quick URL — paste-and-save link list */
+.quick-url-form{
+  display:flex;
+  gap:8px;
+}
+.quick-url-input{
+  flex:1;
+  min-width:0;
+  background:var(--body-black-2);
+  border:1px solid var(--seam-soft);
+  color:var(--paper);
+  font-family:var(--font-ui);
+  font-size:13.5px;
+  padding:10px 12px;
+  border-radius:var(--radius-s);
+  outline:none;
+  transition:border-color .2s var(--ease);
+}
+.quick-url-input:focus{border-color:var(--brass);}
+.quick-url-input::placeholder{color:var(--paper-low);}
+.quick-url-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:12px;
+  max-height:280px;
+  overflow-y:auto;
+}
+.quick-url-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:var(--body-black-2);
+  border:1px solid var(--seam-soft);
+  border-radius:var(--radius-s);
+  padding:9px 10px;
+  cursor:pointer;
+  transition:border-color .18s var(--ease), background .18s var(--ease);
+}
+.quick-url-item:hover{border-color:var(--brass); background:#241f1a;}
+.quick-url-favicon{
+  width:20px;height:20px;
+  border-radius:2px;
+  background:var(--leather);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  flex:0 0 auto;
+}
+.quick-url-favicon img{width:13px;height:13px;object-fit:contain;}
+.quick-url-text{
+  flex:1;
+  min-width:0;
+  font-size:13px;
+  color:var(--paper);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.quick-url-delete{
+  flex:0 0 auto;
+  width:22px;height:22px;
+  border-radius:2px;
+  border:none;
+  background:transparent;
+  color:var(--paper-low);
+  cursor:pointer;
+  font-size:12px;
+  opacity:0;
+  transition:opacity .15s var(--ease), background .15s var(--ease), color .15s var(--ease);
+}
+.quick-url-item:hover .quick-url-delete{opacity:1;}
+.quick-url-delete:hover{background:var(--darkroom-red); color:#fff;}
+.quick-url-empty{
+  text-align:center;
+  color:var(--paper-low);
+  font-size:12px;
+  padding:20px 8px;
+}
+
+/* Backup panel — export/import row */
+.backup-row{
+  display:flex;
+  gap:8px;
+}
+.backup-row .btn{flex:1; justify-content:center;}
+.backup-hint{
+  margin-top:10px;
+  font-size:11px;
+  color:var(--paper-low);
+  line-height:1.5;
+}
+.danger-zone{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid var(--seam-soft);
+}
+.btn-full-danger{
+  width:100%;
+  justify-content:center;
+  color:#d99589;
+  border-color:rgba(138,59,50,0.4);
+}
+.btn-full-danger:hover{
+  background:rgba(138,59,50,0.2);
+  border-color:var(--darkroom-red);
+  color:#e0a89e;
+}
+
+/* ============================================================
+   MODAL (Add/Edit bookmark)
+   ============================================================ */
 .modal-overlay{
-  position:fixed; inset:0; background:rgba(2,3,8,.72);
-  display:flex; align-items:center; justify-content:center;
-  z-index:100; padding:20px;
+  position:fixed; inset:0;
+  background:rgba(10,8,6,0.72);
   backdrop-filter:blur(3px);
+  display:flex; align-items:center; justify-content:center;
+  z-index:100;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .2s var(--ease);
+  padding:20px;
 }
-.modal-overlay[hidden]{ display:none; }
+.modal-overlay.open{opacity:1; pointer-events:auto;}
 .modal{
-  width:100%; max-width:420px;
-  padding:22px;
-  max-height:86vh; overflow-y:auto;
+  background:var(--leather);
+  border:1px solid var(--seam);
+  border-radius:var(--radius-m);
+  padding:24px;
+  width:100%;
+  max-width:400px;
+  transform:translateY(10px) scale(.98);
+  transition:transform .2s var(--ease);
 }
-.modal h2{
-  margin:0 0 16px; font-family:var(--font-display); font-size:15px;
-  letter-spacing:.1em; text-transform:uppercase; color:var(--cyan);
+.modal-overlay.open .modal{transform:translateY(0) scale(1);}
+.modal h3{
+  margin:0 0 18px;
+  font-size:14px;
+  font-weight:700;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--paper);
 }
-.field{ display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
-.field label{ font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; }
-.modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
-.cat-manage-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
-.cat-row{
-  display:flex; align-items:center; gap:8px;
-  padding:7px 8px; border:1px solid var(--line); border-radius:var(--radius);
+.field{margin-bottom:14px;}
+.field label{
+  display:block;
+  font-size:11px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--paper-dim);
+  margin-bottom:6px;
 }
-.cat-row input{ flex:1; padding:5px 8px; font-size:12px; }
-.cat-row .locked{ color:var(--text-faint); font-size:10px; text-transform:uppercase; }
-.warn-text{ color:var(--amber); font-size:12px; line-height:1.5; margin-bottom:10px; }
-
-/* ==========================================================================
-   COMMAND PALETTE
-   ========================================================================== */
-.cmdk-overlay{
-  position:fixed; inset:0; background:rgba(2,3,8,.78);
-  z-index:200; display:flex; align-items:flex-start; justify-content:center;
-  padding-top:10vh;
+.field input{
+  width:100%;
+  background:var(--body-black-2);
+  border:1px solid var(--seam-soft);
+  color:var(--paper);
+  padding:10px 12px;
+  border-radius:var(--radius-s);
+  font-size:14px;
+  outline:none;
+  font-family:inherit;
+  transition:border-color .2s var(--ease);
 }
-.cmdk-overlay[hidden]{ display:none; }
-.cmdk-box{
-  width:100%; max-width:560px; padding:0; overflow:hidden;
-}
-.cmdk-input-row{ display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line); }
-.cmdk-input-row span{ color:var(--cyan); }
-.cmdk-input-row input{
-  flex:1; background:transparent; border:none; font-size:15px; color:var(--text); padding:4px 0;
-}
-.cmdk-input-row input:focus{ outline:none; }
-.cmdk-results{ max-height:360px; overflow-y:auto; }
-.cmdk-item{
-  display:flex; align-items:center; gap:10px;
-  padding:10px 16px; cursor:pointer; font-size:13px;
-  border-left:2px solid transparent;
-}
-.cmdk-item .favicon-wrap{ width:22px; height:22px; border-radius:4px; flex-shrink:0; }
-.cmdk-item .favicon-wrap img{ width:13px; height:13px; }
-.cmdk-item .meta{ overflow:hidden; }
-.cmdk-item .meta .n{ color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.cmdk-item .meta .u{ color:var(--text-faint); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.cmdk-item.active{ background:rgba(56,244,255,.1); border-left-color:var(--cyan); }
-.cmdk-empty{ padding:16px; color:var(--text-dim); font-size:12px; }
-.cmdk-footer{
-  display:flex; gap:14px; padding:8px 16px; border-top:1px solid var(--line);
-  color:var(--text-faint); font-size:10px; text-transform:uppercase; letter-spacing:.06em;
+.field input:focus{border-color:var(--brass);}
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:20px;
 }
 
-/* visually hidden but accessible */
+/* ============================================================
+   COMMAND PALETTE (Ctrl+K)
+   ============================================================ */
+.palette-overlay{
+  position:fixed; inset:0;
+  background:rgba(10,8,6,0.75);
+  backdrop-filter:blur(3px);
+  z-index:200;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  padding-top:12vh;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s var(--ease);
+}
+.palette-overlay.open{opacity:1; pointer-events:auto;}
+.palette{
+  width:100%;
+  max-width:560px;
+  background:var(--leather);
+  border:1px solid var(--seam);
+  border-radius:var(--radius-m);
+  overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  transform:translateY(-8px);
+  transition:transform .2s var(--ease);
+}
+.palette-overlay.open .palette{transform:translateY(0);}
+.palette-input-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:16px 18px;
+  border-bottom:1px solid var(--seam);
+}
+.palette-input-row svg{flex:0 0 auto; color:var(--paper-low);}
+#palette-input{
+  flex:1;
+  background:transparent;
+  border:none;
+  outline:none;
+  color:var(--paper);
+  font-size:16px;
+}
+#palette-input::placeholder{color:var(--paper-low);}
+.palette-results{
+  max-height:340px;
+  overflow-y:auto;
+  padding:8px;
+}
+.palette-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:var(--radius-s);
+  cursor:pointer;
+}
+.palette-item.active, .palette-item:hover{background:var(--leather-hi);}
+.palette-item .pf{
+  width:22px;height:22px;border-radius:2px;background:var(--body-black-2);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;overflow:hidden;
+}
+.palette-item .pf img{width:14px;height:14px;}
+.palette-item .pname{font-size:13.5px; color:var(--paper);}
+.palette-item .purl{font-size:11px; color:var(--paper-low); margin-left:auto; font-family:var(--font-mono);}
+.palette-empty{padding:24px; text-align:center; color:var(--paper-low); font-size:13px;}
+.palette-footer{
+  display:flex;
+  gap:16px;
+  padding:10px 18px;
+  border-top:1px solid var(--seam);
+  font-size:11px;
+  color:var(--paper-low);
+  font-family:var(--font-mono);
+}
+.palette-footer span{display:flex;align-items:center;gap:5px;}
+.palette-footer kbd{
+  background:var(--body-black-2);
+  border:1px solid var(--seam);
+  border-radius:2px;
+  padding:1px 5px;
+}
+
+/* ---------- Toast ---------- */
+.toast{
+  position:fixed;
+  bottom:24px; left:50%;
+  transform:translate(-50%, 20px);
+  background:var(--leather);
+  border:1px solid var(--seam);
+  color:var(--paper);
+  padding:12px 20px;
+  border-radius:var(--radius-s);
+  font-size:13px;
+  opacity:0;
+  pointer-events:none;
+  transition:all .25s var(--ease);
+  z-index:300;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+}
+.toast.show{opacity:1; transform:translate(-50%, 0);}
+
+/* ---------- Screen-reader only text ---------- */
 .sr-only{
-  position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+  position:absolute; width:1px; height:1px;
+  padding:0; margin:-1px; overflow:hidden;
   clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+
+/* ---------- Scrollbars (subtle) ---------- */
+::-webkit-scrollbar{width:8px; height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--seam); border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:var(--brass);}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 560px){
+  .wrap{padding:24px 14px 60px;}
+  .masthead-title{font-size:16px;}
+  .bookmark-grid{grid-template-columns:repeat(auto-fill, minmax(128px,1fr));}
 }
 </style>
 </head>
 <body>
 
-<div class="grid-bg" aria-hidden="true"></div>
-<div class="grid-glow" aria-hidden="true"></div>
+<!-- Signature background: film grain + light leak + vignette -->
+<canvas id="grain-canvas" aria-hidden="true"></canvas>
+<div class="bg-light-leak" aria-hidden="true"></div>
+<div class="bg-vignette" aria-hidden="true"></div>
 
-<main class="console">
+<div class="wrap">
 
-  <!-- ============================== STATISTICS PANEL ============================== -->
-  <section class="row stats" aria-label="Statistics">
-    <div class="stat-card hud-frame">
-      <span class="label">Bookmarks</span>
-      <span class="value" id="statBookmarks">0</span>
+  <!-- Minimal masthead — just a marker, no clock/greeting/search -->
+  <div class="masthead">
+    <div class="masthead-brand">
+      <span class="lens-dot" aria-hidden="true"></span>
+      <span class="masthead-title">Bookmarks</span>
     </div>
-    <div class="stat-card hud-frame magenta">
-      <span class="label">Quick URLs</span>
-      <span class="value" id="statQuickUrls">0</span>
-    </div>
-    <div class="stat-card hud-frame magenta">
-      <span class="label">Categories</span>
-      <span class="value" id="statCategories">0</span>
-    </div>
-    <div class="stat-card hud-frame">
-      <span class="label">System Time</span>
-      <a href="https://time.is/">
-        <span class="value" id="statTime">--:--:--</span>
-      </a>
-    </div>
-  </section>
+    <span class="masthead-counter" id="frame-counter">EXP. 00</span>
+  </div>
 
-  <div class="row main">
-    <!-- ============================== BOOKMARKS ============================== -->
-    <section class="panel hud-frame" aria-label="Bookmark manager">
-      <div class="panel-head">
-        <h2 class="panel-title"><span class="dot" aria-hidden="true"></span>Bookmarks</h2>
-        <div class="panel-actions">
-          <button type="button" id="btnManageCats">Categories</button>
-          <button type="button" class="primary" id="btnAddBookmark">+ Add Bookmark</button>
+  <div class="main-grid">
+    <!-- =========================================================
+         LEFT: BOOKMARK MANAGER (no categories)
+    ========================================================== -->
+    <section>
+      <div class="section-heading">
+        <h2>Roll</h2>
+        <button class="btn btn-primary" id="add-bookmark-btn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          เพิ่ม Bookmark
+        </button>
+      </div>
+
+      <!-- Bookmark card grid (drag & drop enabled), styled as film frames -->
+      <div class="bookmark-grid" id="bookmark-grid" aria-live="polite"></div>
+    </section>
+
+    <!-- =========================================================
+         RIGHT: SIDEBAR — Quick URL + Backup
+    ========================================================== -->
+    <aside class="sidebar">
+
+      <!-- Quick URL — paste a link, save it, click to open. Add many. -->
+      <div class="panel">
+        <h3 class="panel-title">Quick URL</h3>
+        <form id="quick-url-form" class="quick-url-form">
+          <label for="quick-url-input" class="sr-only">วาง URL เพื่อบันทึก</label>
+          <input type="text" id="quick-url-input" class="quick-url-input" placeholder="วางลิงก์ที่นี่แล้วกด Enter..." autocomplete="off">
+          <button type="submit" class="btn btn-primary btn-icon-only" aria-label="บันทึกลิงก์">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </button>
+        </form>
+        <div id="quick-url-list" class="quick-url-list"></div>
+      </div>
+
+      <!-- Backup / Restore — export & import all data as JSON -->
+      <div class="panel">
+        <h3 class="panel-title">Backup</h3>
+        <div class="backup-row">
+          <button type="button" class="btn" id="export-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export
+          </button>
+          <button type="button" class="btn" id="import-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 0l-4 4m4-4l4 4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Import
+          </button>
+        </div>
+        <input type="file" id="import-file-input" accept="application/json,.json" class="sr-only" aria-hidden="true">
+        <p class="backup-hint">Export ข้อมูลทั้งหมด (Bookmark, Quick URL) เป็นไฟล์ .json สำรอง หรือ Import กลับเพื่อกู้คืน</p>
+
+        <div class="danger-zone">
+          <button type="button" class="btn btn-full-danger" id="reset-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            รีเซ็ตข้อมูลทั้งหมด
+          </button>
+          <p class="backup-hint">ลบ Bookmark และ Quick URL ทั้งหมด แล้วกลับไปใช้ค่าเริ่มต้น — แนะนำให้ Export สำรองไว้ก่อน</p>
         </div>
       </div>
 
-      <div class="tabs" id="categoryTabs" role="tablist" aria-label="Filter bookmarks by category"></div>
-
-      <div class="bookmark-grid" id="bookmarkGrid" aria-live="polite"></div>
-    </section>
-
-    <!-- ============================== QUICK URL ============================== -->
-    <section class="panel hud-frame" aria-label="Quick URL saver">
-      <div class="panel-head">
-        <h2 class="panel-title"><span class="dot" aria-hidden="true"></span>Quick URL</h2>
-      </div>
-      <form class="quick-form" id="quickForm">
-        <label for="quickInput" class="sr-only">Paste a URL to save</label>
-        <input type="text" id="quickInput" placeholder="Paste link, press Enter…" autocomplete="off">
-        <button type="submit">Save</button>
-      </form>
-      <div class="quick-list" id="quickList" aria-live="polite"></div>
-    </section>
+    </aside>
   </div>
+</div>
 
-  <!-- ============================== TOOLBAR ============================== -->
-  <section class="toolbar" aria-label="Backup and reset controls">
-    <button type="button" id="btnExport">⤓ Export Backup</button>
-    <button type="button" id="btnImport">⤒ Import Backup</button>
-    <input type="file" id="fileImport" accept=".json" class="sr-only" aria-hidden="true">
-    <button type="button" class="danger" id="btnReset">⌫ Reset All Data</button>
-  </section>
-
-  <p class="hint">Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (<kbd>⌘</kbd>+<kbd>K</kbd> on Mac) to open the command palette</p>
-</main>
-
-<!-- ============================== MODAL: ADD/EDIT BOOKMARK ============================== -->
-<div class="modal-overlay" id="bookmarkModalOverlay" hidden>
-  <div class="modal hud-frame" role="dialog" aria-modal="true" aria-labelledby="bookmarkModalTitle">
-    <h2 id="bookmarkModalTitle">Add Bookmark</h2>
-    <form id="bookmarkForm">
-      <input type="hidden" id="bmId">
+<!-- =========================================================
+     MODAL: Add / Edit Bookmark
+========================================================== -->
+<div class="modal-overlay" id="bm-modal-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bm-modal-title">
+    <h3 id="bm-modal-title">เพิ่ม Bookmark</h3>
+    <form id="bm-form">
       <div class="field">
-        <label for="bmName">Name</label>
-        <input type="text" id="bmName" required autocomplete="off">
+        <label for="bm-name-input">ชื่อ</label>
+        <input type="text" id="bm-name-input" required placeholder="เช่น Gmail">
       </div>
       <div class="field">
-        <label for="bmUrl">URL</label>
-        <input type="text" id="bmUrl" placeholder="https://example.com" required autocomplete="off">
-      </div>
-      <div class="field">
-        <label for="bmCategory">Category</label>
-        <select id="bmCategory"></select>
+        <label for="bm-url-input">URL</label>
+        <input type="url" id="bm-url-input" required placeholder="https://example.com">
       </div>
       <div class="modal-actions">
-        <button type="button" id="btnBookmarkCancel">Cancel</button>
-        <button type="submit" class="primary">Save Bookmark</button>
+        <button type="button" class="btn" id="bm-cancel-btn">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary" id="bm-save-btn">บันทึก</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- ============================== MODAL: MANAGE CATEGORIES ============================== -->
-<div class="modal-overlay" id="catModalOverlay" hidden>
-  <div class="modal hud-frame" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
-    <h2 id="catModalTitle">Manage Categories</h2>
-    <div class="cat-manage-list" id="catManageList"></div>
-    <form class="field" id="catAddForm" style="flex-direction:row; gap:8px;">
-      <input type="text" id="catAddInput" placeholder="New category name" autocomplete="off" style="flex:1;">
-      <button type="submit">Add</button>
-    </form>
-    <div class="modal-actions">
-      <button type="button" id="btnCatDone" class="primary">Done</button>
+<!-- =========================================================
+     COMMAND PALETTE (Ctrl+K)
+========================================================== -->
+<div class="palette-overlay" id="palette-overlay">
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Command Palette">
+    <div class="palette-input-row">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="text" id="palette-input" placeholder="ค้นหา Bookmark หรือคำสั่ง..." autocomplete="off">
+    </div>
+    <div class="palette-results" id="palette-results"></div>
+    <div class="palette-footer">
+      <span><kbd>↑↓</kbd> เลือก</span>
+      <span><kbd>Enter</kbd> เปิด</span>
+      <span><kbd>Esc</kbd> ปิด</span>
     </div>
   </div>
 </div>
 
-<!-- ============================== MODAL: IMPORT CONFIRM ============================== -->
-<div class="modal-overlay" id="importModalOverlay" hidden>
-  <div class="modal hud-frame" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
-    <h2 id="importModalTitle">Import Backup</h2>
-    <p class="warn-text">This will overwrite all current bookmarks, categories and quick URLs with the contents of the selected file. This cannot be undone.</p>
-    <div class="modal-actions">
-      <button type="button" id="btnImportCancel">Cancel</button>
-      <button type="button" class="danger" id="btnImportConfirm">Overwrite &amp; Import</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============================== MODAL: RESET CONFIRM ============================== -->
-<div class="modal-overlay" id="resetModalOverlay" hidden>
-  <div class="modal hud-frame" role="dialog" aria-modal="true" aria-labelledby="resetModalTitle">
-    <h2 id="resetModalTitle">Reset All Data</h2>
-    <p class="warn-text">This permanently deletes every bookmark, category and quick URL. Type <strong>RESET</strong> below to confirm.</p>
-    <div class="field">
-      <label for="resetInput" class="sr-only">Type RESET to confirm</label>
-      <input type="text" id="resetInput" placeholder="Type RESET" autocomplete="off">
-    </div>
-    <div class="modal-actions">
-      <button type="button" id="btnResetCancel">Cancel</button>
-      <button type="button" class="danger" id="btnResetConfirm" disabled>Wipe Data</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============================== COMMAND PALETTE ============================== -->
-<div class="cmdk-overlay" id="cmdkOverlay" hidden>
-  <div class="cmdk-box hud-frame" role="dialog" aria-modal="true" aria-label="Command palette">
-    <div class="cmdk-input-row">
-      <span aria-hidden="true">⌕</span>
-      <label for="cmdkInput" class="sr-only">Search bookmarks or web</label>
-      <input type="text" id="cmdkInput" placeholder="Search bookmarks, or press Enter to search the web…" autocomplete="off">
-    </div>
-    <div class="cmdk-results" id="cmdkResults" role="listbox"></div>
-    <div class="cmdk-footer">
-      <span>↑↓ Navigate</span>
-      <span>Enter Open</span>
-      <span>Esc Close</span>
-    </div>
-  </div>
-</div>
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
 
 <script>
-(function(){
-  'use strict';
+/* ================================================================
+   STATE & STORAGE
+   All persistent data lives in localStorage under a single
+   namespaced key so it's easy to inspect / migrate.
+   Categories have been removed entirely from the data model.
+   ================================================================ */
+const STORAGE_KEY = 'homepage_dashboard_v1';
 
-  /* ==========================================================================
-     STORAGE — everything lives under one namespaced key
-     ========================================================================== */
-  const STORAGE_KEY = 'homepage_dashboard_v1';
-
-  const DEFAULT_STATE = {
-    bookmarks: [],   // { id, name, url, category, order }
-    categories: [ { id:'other', name:'Other', locked:true } ],
-    quickUrls: []    // { id, url, createdAt }
-  };
-
-  let state = loadState();
-
-  function loadState(){
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return structuredClone(DEFAULT_STATE);
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
       const parsed = JSON.parse(raw);
-      return normalizeState(parsed);
-    }catch(e){
-      console.warn('Failed to load state, starting fresh.', e);
-      return structuredClone(DEFAULT_STATE);
-    }
-  }
-
-  // Fills in sensible defaults for missing fields so older backups never error out.
-  function normalizeState(raw){
-    const out = structuredClone(DEFAULT_STATE);
-    if(raw && Array.isArray(raw.categories) && raw.categories.length){
-      out.categories = raw.categories.map(c => ({
-        id: c.id || cryptoRandomId(),
-        name: c.name || 'Unnamed',
-        locked: !!c.locked
-      }));
-    }
-    // guarantee an unremovable "Other" fallback category exists
-    if(!out.categories.some(c => c.id === 'other')){
-      out.categories.push({ id:'other', name:'Other', locked:true });
-    }
-    out.categories.forEach(c => { if(c.id === 'other') c.locked = true; });
-
-    if(raw && Array.isArray(raw.bookmarks)){
-      out.bookmarks = raw.bookmarks.map((b,i) => ({
-        id: b.id || cryptoRandomId(),
-        name: b.name || b.url || 'Untitled',
-        url: b.url || '',
-        category: (b.category && out.categories.some(c=>c.id===b.category)) ? b.category : 'other',
-        order: typeof b.order === 'number' ? b.order : i
-      }));
-    }
-    if(raw && Array.isArray(raw.quickUrls)){
-      out.quickUrls = raw.quickUrls.map(q => ({
-        id: q.id || cryptoRandomId(),
-        url: q.url || '',
-        createdAt: q.createdAt || Date.now()
-      })).filter(q => q.url);
-    }
-    return out;
-  }
-
-  function saveState(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-
-  function cryptoRandomId(){
-    return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,9);
-  }
-
-  /* ==========================================================================
-     URL HELPERS
-     ========================================================================== */
-  function normalizeUrl(input){
-    let v = (input || '').trim();
-    if(!v) return '';
-    if(!/^[a-z][a-z0-9+.-]*:\/\//i.test(v)){
-      v = 'https://' + v;
-    }
-    return v;
-  }
-
-  function getDomain(url){
-    try{ return new URL(url).hostname.replace(/^www\./,''); }
-    catch(e){ return ''; }
-  }
-
-  function faviconUrl(url){
-    const domain = getDomain(url);
-    return domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : '';
-  }
-
-  // Builds a favicon element with graceful fallback to the item's first letter.
-  function buildFavicon(name, url, sizeClass){
-    const wrap = document.createElement('div');
-    wrap.className = 'favicon-wrap';
-    const fav = faviconUrl(url);
-    const img = document.createElement('img');
-    img.alt = '';
-    img.loading = 'lazy';
-    img.src = fav;
-    img.onerror = function(){
-      wrap.innerHTML = '';
-      const fb = document.createElement('span');
-      fb.className = 'favicon-fallback';
-      fb.textContent = (name || '?').trim().charAt(0).toUpperCase() || '?';
-      wrap.appendChild(fb);
-    };
-    if(fav){ wrap.appendChild(img); }
-    else{
-      const fb = document.createElement('span');
-      fb.className = 'favicon-fallback';
-      fb.textContent = (name || '?').trim().charAt(0).toUpperCase() || '?';
-      wrap.appendChild(fb);
-    }
-    return wrap;
-  }
-
-  // Navigates the current tab (never a new tab) to the given URL.
-  function navigateSameTab(url){
-    window.location.href = normalizeUrl(url);
-  }
-
-  /* ==========================================================================
-     DOM REFERENCES
-     ========================================================================== */
-  const $ = sel => document.querySelector(sel);
-  const $$ = sel => Array.from(document.querySelectorAll(sel));
-
-  const el = {
-    statBookmarks: $('#statBookmarks'),
-    statCategories: $('#statCategories'),
-    statTime: $('#statTime'),
-    statQuickUrls: $('#statQuickUrls'),
-
-    categoryTabs: $('#categoryTabs'),
-    bookmarkGrid: $('#bookmarkGrid'),
-
-    quickForm: $('#quickForm'),
-    quickInput: $('#quickInput'),
-    quickList: $('#quickList'),
-
-    btnAddBookmark: $('#btnAddBookmark'),
-    btnManageCats: $('#btnManageCats'),
-
-    bookmarkModalOverlay: $('#bookmarkModalOverlay'),
-    bookmarkForm: $('#bookmarkForm'),
-    bmId: $('#bmId'), bmName: $('#bmName'), bmUrl: $('#bmUrl'), bmCategory: $('#bmCategory'),
-    btnBookmarkCancel: $('#btnBookmarkCancel'),
-
-    catModalOverlay: $('#catModalOverlay'),
-    catManageList: $('#catManageList'),
-    catAddForm: $('#catAddForm'),
-    catAddInput: $('#catAddInput'),
-    btnCatDone: $('#btnCatDone'),
-
-    btnExport: $('#btnExport'),
-    btnImport: $('#btnImport'),
-    fileImport: $('#fileImport'),
-    importModalOverlay: $('#importModalOverlay'),
-    btnImportCancel: $('#btnImportCancel'),
-    btnImportConfirm: $('#btnImportConfirm'),
-
-    btnReset: $('#btnReset'),
-    resetModalOverlay: $('#resetModalOverlay'),
-    resetInput: $('#resetInput'),
-    btnResetCancel: $('#btnResetCancel'),
-    btnResetConfirm: $('#btnResetConfirm'),
-
-    cmdkOverlay: $('#cmdkOverlay'),
-    cmdkInput: $('#cmdkInput'),
-    cmdkResults: $('#cmdkResults'),
-  };
-
-  let activeCategoryFilter = 'all';
-
-  /* ==========================================================================
-     RENDER: STATISTICS
-     ========================================================================== */
-  function renderStats(){
-    el.statBookmarks.textContent = state.bookmarks.length;
-    el.statCategories.textContent = state.categories.length;
-    el.statQuickUrls.textContent = state.quickUrls.length;
-  }
-
-  function tickClock(){
-    const now = new Date();
-    el.statTime.textContent = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-  }
-  setInterval(tickClock, 1000);
-  tickClock();
-
-  /* ==========================================================================
-     RENDER: CATEGORY TABS
-     ========================================================================== */
-  function renderCategoryTabs(){
-    el.categoryTabs.innerHTML = '';
-
-    const allTab = makeTab('all', 'All', state.bookmarks.length);
-    el.categoryTabs.appendChild(allTab);
-
-    state.categories.forEach(cat => {
-      const count = state.bookmarks.filter(b => b.category === cat.id).length;
-      el.categoryTabs.appendChild(makeTab(cat.id, cat.name, count));
-    });
-
-    function makeTab(id, name, count){
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'tab' + (activeCategoryFilter === id ? ' active' : '');
-      btn.setAttribute('role','tab');
-      btn.setAttribute('aria-selected', activeCategoryFilter === id ? 'true' : 'false');
-      btn.innerHTML = `<span>${escapeHtml(name)}</span><span class="count">${count}</span>`;
-      btn.addEventListener('click', () => {
-        activeCategoryFilter = id;
-        renderCategoryTabs();
-        renderBookmarkGrid();
-      });
-      return btn;
-    }
-  }
-
-  /* ==========================================================================
-     RENDER: BOOKMARK GRID (with drag & drop reorder)
-     ========================================================================== */
-  let dragSourceId = null;
-
-  function renderBookmarkGrid(){
-    el.bookmarkGrid.innerHTML = '';
-
-    const list = state.bookmarks
-      .filter(b => activeCategoryFilter === 'all' || b.category === activeCategoryFilter)
-      .sort((a,b) => a.order - b.order);
-
-    if(list.length === 0){
-      const empty = document.createElement('div');
-      empty.className = 'empty-state';
-      empty.innerHTML = `<span class="big">No bookmarks yet</span>Add your first bookmark to populate this grid.`;
-      el.bookmarkGrid.appendChild(empty);
-      return;
-    }
-
-    list.forEach(bm => {
-      const cat = state.categories.find(c => c.id === bm.category);
-      const card = document.createElement('div');
-      card.className = 'bookmark-card hud-frame';
-      card.draggable = true;
-      card.dataset.id = bm.id;
-      card.tabIndex = 0;
-
-      const link = document.createElement('a');
-      link.className = 'bookmark-link';
-      link.href = normalizeUrl(bm.url);
-      link.setAttribute('aria-label', `Open bookmark ${bm.name}`);
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        navigateSameTab(bm.url);
-      });
-
-      const fav = buildFavicon(bm.name, bm.url);
-      const name = document.createElement('div');
-      name.className = 'bm-name';
-      name.textContent = bm.name;
-      const catLabel = document.createElement('div');
-      catLabel.className = 'bm-cat';
-      catLabel.textContent = cat ? cat.name : 'Other';
-
-      const controls = document.createElement('div');
-      controls.className = 'bm-controls';
-      const editBtn = document.createElement('button');
-      editBtn.className = 'icon-btn'; editBtn.type = 'button'; editBtn.textContent = '✎';
-      editBtn.setAttribute('aria-label', `Edit ${bm.name}`);
-      editBtn.addEventListener('click', (e) => { e.stopPropagation(); openBookmarkModal(bm); });
-      const delBtn = document.createElement('button');
-      delBtn.className = 'icon-btn danger'; delBtn.type = 'button'; delBtn.textContent = '✕';
-      delBtn.setAttribute('aria-label', `Delete ${bm.name}`);
-      delBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if(confirm(`Delete bookmark "${bm.name}"?`)){
-          state.bookmarks = state.bookmarks.filter(b => b.id !== bm.id);
-          saveState(); renderAll();
-        }
-      });
-      controls.appendChild(editBtn);
-      controls.appendChild(delBtn);
-
-      card.appendChild(link);
-      card.appendChild(fav);
-      card.appendChild(name);
-      card.appendChild(catLabel);
-      card.appendChild(controls);
-
-      // drag & drop reordering
-      card.addEventListener('dragstart', () => { dragSourceId = bm.id; });
-      card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drag-over'); });
-      card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
-      card.addEventListener('drop', (e) => {
-        e.preventDefault();
-        card.classList.remove('drag-over');
-        if(!dragSourceId || dragSourceId === bm.id) return;
-        reorderBookmarks(dragSourceId, bm.id);
-      });
-
-      el.bookmarkGrid.appendChild(card);
-    });
-  }
-
-  function reorderBookmarks(sourceId, targetId){
-    const ordered = state.bookmarks.slice().sort((a,b) => a.order - b.order);
-    const fromIdx = ordered.findIndex(b => b.id === sourceId);
-    const toIdx = ordered.findIndex(b => b.id === targetId);
-    if(fromIdx === -1 || toIdx === -1) return;
-    const [moved] = ordered.splice(fromIdx, 1);
-    ordered.splice(toIdx, 0, moved);
-    ordered.forEach((b,i) => b.order = i);
-    saveState();
-    renderBookmarkGrid();
-  }
-
-  /* ==========================================================================
-     BOOKMARK MODAL (add / edit)
-     ========================================================================== */
-  function populateCategorySelect(select, selectedId){
-    select.innerHTML = '';
-    state.categories.forEach(cat => {
-      const opt = document.createElement('option');
-      opt.value = cat.id;
-      opt.textContent = cat.name;
-      if(cat.id === selectedId) opt.selected = true;
-      select.appendChild(opt);
-    });
-  }
-
-  function openBookmarkModal(bookmark){
-    populateCategorySelect(el.bmCategory, bookmark ? bookmark.category : 'other');
-    el.bmId.value = bookmark ? bookmark.id : '';
-    el.bmName.value = bookmark ? bookmark.name : '';
-    el.bmUrl.value = bookmark ? bookmark.url : '';
-    $('#bookmarkModalTitle').textContent = bookmark ? 'Edit Bookmark' : 'Add Bookmark';
-    showModal(el.bookmarkModalOverlay);
-    el.bmName.focus();
-  }
-
-  el.btnAddBookmark.addEventListener('click', () => openBookmarkModal(null));
-  el.btnBookmarkCancel.addEventListener('click', () => hideModal(el.bookmarkModalOverlay));
-
-  el.bookmarkForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const id = el.bmId.value;
-    const name = el.bmName.value.trim();
-    const url = normalizeUrl(el.bmUrl.value.trim());
-    const category = el.bmCategory.value;
-    if(!name || !url) return;
-
-    if(id){
-      const bm = state.bookmarks.find(b => b.id === id);
-      if(bm){ bm.name = name; bm.url = url; bm.category = category; }
-    } else {
-      const maxOrder = state.bookmarks.reduce((m,b) => Math.max(m,b.order), -1);
-      state.bookmarks.push({ id: cryptoRandomId(), name, url, category, order: maxOrder + 1 });
-    }
-    saveState();
-    hideModal(el.bookmarkModalOverlay);
-    renderAll();
-  });
-
-  /* ==========================================================================
-     CATEGORY MANAGEMENT MODAL
-     ========================================================================== */
-  function renderCatManageList(){
-    el.catManageList.innerHTML = '';
-    state.categories.forEach(cat => {
-      const row = document.createElement('div');
-      row.className = 'cat-row';
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = cat.name;
-      input.disabled = cat.locked;
-      input.setAttribute('aria-label', `Rename category ${cat.name}`);
-      input.addEventListener('change', () => {
-        const val = input.value.trim();
-        if(val){ cat.name = val; saveState(); renderAll(); }
-        else{ input.value = cat.name; }
-      });
-      row.appendChild(input);
-
-      if(cat.locked){
-        const lock = document.createElement('span');
-        lock.className = 'locked';
-        lock.textContent = 'Default';
-        row.appendChild(lock);
-      } else {
-        const del = document.createElement('button');
-        del.type = 'button';
-        del.className = 'icon-btn danger';
-        del.textContent = '✕';
-        del.setAttribute('aria-label', `Delete category ${cat.name}`);
-        del.addEventListener('click', () => deleteCategory(cat));
-        row.appendChild(del);
+      if(parsed && Array.isArray(parsed.bookmarks)){
+        // Older saves may lack quickUrls — backfill so nothing breaks
+        if(!Array.isArray(parsed.quickUrls)) parsed.quickUrls = [];
+        return parsed;
       }
-      el.catManageList.appendChild(row);
-    });
-  }
-
-  function deleteCategory(cat){
-    const affected = state.bookmarks.filter(b => b.category === cat.id).length;
-    const msg = affected > 0
-      ? `Delete category "${cat.name}"? ${affected} bookmark(s) will move to "Other".`
-      : `Delete category "${cat.name}"?`;
-    if(!confirm(msg)) return;
-
-    state.bookmarks.forEach(b => { if(b.category === cat.id) b.category = 'other'; });
-    state.categories = state.categories.filter(c => c.id !== cat.id);
-    if(activeCategoryFilter === cat.id) activeCategoryFilter = 'all';
-    saveState();
-    renderCatManageList();
-    renderAll();
-  }
-
-  el.btnManageCats.addEventListener('click', () => {
-    renderCatManageList();
-    showModal(el.catModalOverlay);
-    el.catAddInput.focus();
-  });
-  el.btnCatDone.addEventListener('click', () => hideModal(el.catModalOverlay));
-
-  el.catAddForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = el.catAddInput.value.trim();
-    if(!name) return;
-    state.categories.push({ id: cryptoRandomId(), name, locked:false });
-    el.catAddInput.value = '';
-    saveState();
-    renderCatManageList();
-    renderAll();
-  });
-
-  /* ==========================================================================
-     QUICK URL
-     ========================================================================== */
-  function renderQuickList(){
-    el.quickList.innerHTML = '';
-    const list = state.quickUrls.slice().sort((a,b) => b.createdAt - a.createdAt);
-
-    if(list.length === 0){
-      const empty = document.createElement('div');
-      empty.className = 'empty-state';
-      empty.style.padding = '20px 8px';
-      empty.textContent = 'No quick URLs saved yet.';
-      el.quickList.appendChild(empty);
-      return;
     }
+  }catch(e){
+    console.warn('ไม่สามารถอ่านข้อมูลจาก localStorage ได้ ใช้ค่าเริ่มต้นแทน', e);
+  }
+  // First run / corrupted data -> build fresh default state (empty)
+  return {
+    bookmarks: [],
+    quickUrls: []
+  };
+}
 
-    list.forEach(q => {
-      const item = document.createElement('div');
-      item.className = 'quick-item';
+let state = loadState();
 
-      const link = document.createElement('a');
-      link.className = 'qu-link';
-      link.href = normalizeUrl(q.url);
-      link.setAttribute('aria-label', `Open ${q.url}`);
-      link.addEventListener('click', (e) => { e.preventDefault(); navigateSameTab(q.url); });
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){
+    console.error('บันทึกข้อมูลไม่สำเร็จ (localStorage อาจเต็มหรือถูกปิดใช้งาน)', e);
+    showToast('บันทึกข้อมูลไม่สำเร็จ');
+  }
+}
 
-      const fav = buildFavicon(q.url, q.url);
-      const urlSpan = document.createElement('span');
-      urlSpan.className = 'qu-url';
-      urlSpan.textContent = q.url;
+/* ================================================================
+   TOAST helper
+   ================================================================ */
+let toastTimer = null;
+function showToast(msg){
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
 
-      const del = document.createElement('button');
-      del.type = 'button';
-      del.className = 'icon-btn danger';
-      del.textContent = '✕';
-      del.setAttribute('aria-label', `Delete quick URL ${q.url}`);
-      del.addEventListener('click', (e) => {
-        e.stopPropagation();
-        state.quickUrls = state.quickUrls.filter(x => x.id !== q.id);
-        saveState(); renderAll();
-      });
+/* ================================================================
+   Small helper: zero-pad a number (used for the frame counter)
+   ================================================================ */
+function pad(n){ return n.toString().padStart(2, '0'); }
 
-      item.appendChild(link);
-      item.appendChild(fav);
-      item.appendChild(urlSpan);
-      item.appendChild(del);
-      el.quickList.appendChild(item);
+/* ================================================================
+   FAVICON helper — DuckDuckGo's favicon service returns the
+   actual per-app icon (e.g. Google Docs, not just the Google logo).
+   Falls back to a generated initial-letter badge on error.
+   ================================================================ */
+function getFaviconUrl(url){
+  try{
+    const u = new URL(url);
+    return `https://icons.duckduckgo.com/ip3/${u.hostname}.ico`;
+  }catch(e){
+    return '';
+  }
+}
+
+function faviconMarkup(bm){
+  const favUrl = getFaviconUrl(bm.url);
+  const letter = (bm.name || '?').trim().charAt(0).toUpperCase();
+  if(favUrl){
+    return `<img src="${favUrl}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${letter}',style:'font-weight:700;color:var(--paper-dim);font-size:14px;'}))">`;
+  }
+  return `<span style="font-weight:700;color:var(--paper-dim);font-size:14px;">${letter}</span>`;
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* Shorten a URL to just its hostname, for the small caption under
+   each bookmark card — mimics a frame label rather than showing
+   the full address. */
+function shortHost(url){
+  try{
+    return new URL(url).hostname.replace(/^www\./, '');
+  }catch(e){
+    return url;
+  }
+}
+
+/* ================================================================
+   BOOKMARK MANAGER — grid, add/edit/delete, drag & drop reorder
+   ================================================================ */
+const bookmarkGrid = document.getElementById('bookmark-grid');
+let dragSourceId = null;
+
+function renderBookmarks(){
+  const sorted = state.bookmarks.slice().sort((a, b) => a.order - b.order);
+
+  document.getElementById('frame-counter').textContent = `EXP. ${pad(sorted.length)}`;
+
+  if(sorted.length === 0){
+    bookmarkGrid.innerHTML = `<div class="empty-state">ม้วนฟิล์มยังว่างอยู่ — กดปุ่ม "เพิ่ม Bookmark" เพื่อเริ่มเก็บภาพแรก</div>`;
+    return;
+  }
+
+  bookmarkGrid.innerHTML = sorted.map((bm, i) => `
+    <div class="bm-card"
+         draggable="true"
+         data-id="${bm.id}"
+         tabindex="0"
+         role="link"
+         aria-label="เปิด ${escapeHtml(bm.name)}">
+      <span class="bm-frame-number">${pad(i + 1)}</span>
+      <div class="bm-actions">
+        <button type="button" class="bm-action-btn edit-btn" data-action="edit" data-id="${bm.id}" aria-label="แก้ไข ${escapeHtml(bm.name)}">✎</button>
+        <button type="button" class="bm-action-btn" data-action="delete" data-id="${bm.id}" aria-label="ลบ ${escapeHtml(bm.name)}">✕</button>
+      </div>
+      <div class="bm-favicon">${faviconMarkup(bm)}</div>
+      <div class="bm-name">${escapeHtml(bm.name)}</div>
+      <div class="bm-url-label">${escapeHtml(shortHost(bm.url))}</div>
+    </div>
+  `).join('') + `
+    <div class="bm-card bm-add-card" id="inline-add-card" tabindex="0" role="button" aria-label="เพิ่ม Bookmark ใหม่">
+      <span class="plus">+</span>
+      <span style="font-size:12px;">เพิ่ม Bookmark</span>
+    </div>
+  `;
+
+  // Open bookmark on click (ignore clicks that hit the action buttons)
+  bookmarkGrid.querySelectorAll('.bm-card[data-id]').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if(e.target.closest('.bm-action-btn')) return;
+      const bm = state.bookmarks.find(b => b.id === card.dataset.id);
+      if(bm) window.location.href = bm.url;
     });
-  }
+    card.addEventListener('keydown', (e) => {
+      if((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.bm-action-btn')){
+        e.preventDefault();
+        const bm = state.bookmarks.find(b => b.id === card.dataset.id);
+        if(bm) window.location.href = bm.url;
+      }
+    });
 
-  el.quickForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const raw = el.quickInput.value.trim();
-    if(!raw) return;
-    const url = normalizeUrl(raw);
-    state.quickUrls.push({ id: cryptoRandomId(), url, createdAt: Date.now() });
-    el.quickInput.value = '';
-    saveState();
-    renderAll();
-  });
-
-  /* ==========================================================================
-     MODAL HELPERS
-     ========================================================================== */
-  function showModal(overlay){
-    overlay.hidden = false;
-  }
-  function hideModal(overlay){
-    overlay.hidden = true;
-  }
-  $$('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-      if(e.target === overlay) hideModal(overlay);
+    // Drag & drop reordering
+    card.addEventListener('dragstart', () => {
+      dragSourceId = card.dataset.id;
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const targetId = card.dataset.id;
+      if(dragSourceId && targetId && dragSourceId !== targetId){
+        reorderBookmarks(dragSourceId, targetId);
+      }
     });
   });
-  document.addEventListener('keydown', (e) => {
-    if(e.key === 'Escape'){
-      $$('.modal-overlay').forEach(o => { if(!o.hidden) hideModal(o); });
-    }
+
+  document.getElementById('inline-add-card')?.addEventListener('click', () => openBookmarkModal());
+  document.getElementById('inline-add-card')?.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openBookmarkModal(); }
   });
 
-  /* ==========================================================================
-     BACKUP: EXPORT / IMPORT
-     ========================================================================== */
-  el.btnExport.addEventListener('click', () => {
-    const dateStr = new Date().toISOString().slice(0,10);
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+  // Edit / delete buttons
+  bookmarkGrid.querySelectorAll('[data-action="edit"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openBookmarkModal(btn.dataset.id);
+    });
+  });
+  bookmarkGrid.querySelectorAll('[data-action="delete"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteBookmark(btn.dataset.id);
+    });
+  });
+}
+
+function reorderBookmarks(sourceId, targetId){
+  const sorted = state.bookmarks.slice().sort((a,b) => a.order - b.order);
+  const sourceIdx = sorted.findIndex(b => b.id === sourceId);
+  const targetIdx = sorted.findIndex(b => b.id === targetId);
+  if(sourceIdx === -1 || targetIdx === -1) return;
+
+  const [moved] = sorted.splice(sourceIdx, 1);
+  sorted.splice(targetIdx, 0, moved);
+
+  sorted.forEach((bm, i) => { bm.order = i; });
+  state.bookmarks = sorted;
+
+  saveState();
+  renderBookmarks();
+}
+
+function deleteBookmark(id){
+  const bm = state.bookmarks.find(b => b.id === id);
+  if(!bm) return;
+  state.bookmarks = state.bookmarks.filter(b => b.id !== id);
+  saveState();
+  renderBookmarks();
+  showToast(`ลบ "${bm.name}" แล้ว`);
+}
+
+/* ---------- Add / Edit Modal ---------- */
+const bmModalOverlay = document.getElementById('bm-modal-overlay');
+const bmForm = document.getElementById('bm-form');
+const bmNameInput = document.getElementById('bm-name-input');
+const bmUrlInput = document.getElementById('bm-url-input');
+const bmModalTitle = document.getElementById('bm-modal-title');
+let editingBookmarkId = null;
+
+function openBookmarkModal(id){
+  editingBookmarkId = id || null;
+
+  if(id){
+    const bm = state.bookmarks.find(b => b.id === id);
+    if(!bm) return;
+    bmModalTitle.textContent = 'แก้ไข Bookmark';
+    bmNameInput.value = bm.name;
+    bmUrlInput.value = bm.url;
+  } else {
+    bmModalTitle.textContent = 'เพิ่ม Bookmark';
+    bmForm.reset();
+  }
+
+  bmModalOverlay.classList.add('open');
+  setTimeout(() => bmNameInput.focus(), 50);
+}
+
+function closeBookmarkModal(){
+  bmModalOverlay.classList.remove('open');
+  editingBookmarkId = null;
+}
+
+document.getElementById('add-bookmark-btn').addEventListener('click', () => openBookmarkModal());
+document.getElementById('bm-cancel-btn').addEventListener('click', closeBookmarkModal);
+bmModalOverlay.addEventListener('click', (e) => { if(e.target === bmModalOverlay) closeBookmarkModal(); });
+
+bmForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  let name = bmNameInput.value.trim();
+  let url = bmUrlInput.value.trim();
+
+  if(!name || !url) return;
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+  if(editingBookmarkId){
+    const bm = state.bookmarks.find(b => b.id === editingBookmarkId);
+    if(bm){ bm.name = name; bm.url = url; }
+    showToast('แก้ไข Bookmark แล้ว');
+  } else {
+    const maxOrder = state.bookmarks.reduce((m, b) => Math.max(m, b.order), -1);
+    state.bookmarks.push({
+      id: 'bm_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      name, url,
+      order: maxOrder + 1
+    });
+    showToast('เพิ่ม Bookmark แล้ว');
+  }
+
+  saveState();
+  renderBookmarks();
+  closeBookmarkModal();
+});
+
+/* ================================================================
+   QUICK URL — paste a link, save it to a list, click to open.
+   Supports adding as many links as needed.
+   ================================================================ */
+const quickUrlForm = document.getElementById('quick-url-form');
+const quickUrlInput = document.getElementById('quick-url-input');
+const quickUrlListEl = document.getElementById('quick-url-list');
+
+function normalizeUrl(raw){
+  let url = raw.trim();
+  if(!url) return '';
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  return url;
+}
+
+function renderQuickUrls(){
+  if(state.quickUrls.length === 0){
+    quickUrlListEl.innerHTML = `<div class="quick-url-empty">ยังไม่มีลิงก์ที่บันทึกไว้ — วาง URL ด้านบนแล้วกด Enter</div>`;
+    return;
+  }
+
+  // Newest link first, so the thing you just pasted is easy to find
+  const sorted = state.quickUrls.slice().sort((a, b) => b.createdAt - a.createdAt);
+
+  quickUrlListEl.innerHTML = sorted.map(item => `
+    <div class="quick-url-item" data-id="${item.id}" tabindex="0" role="link" aria-label="เปิด ${escapeHtml(item.url)}">
+      <span class="quick-url-favicon">${faviconMarkup({ name: item.url, url: item.url })}</span>
+      <span class="quick-url-text">${escapeHtml(item.url)}</span>
+      <button type="button" class="quick-url-delete" data-id="${item.id}" aria-label="ลบลิงก์นี้">✕</button>
+    </div>
+  `).join('');
+
+  quickUrlListEl.querySelectorAll('.quick-url-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if(e.target.closest('.quick-url-delete')) return;
+      const item = state.quickUrls.find(q => q.id === el.dataset.id);
+      if(item) window.location.href = item.url;
+    });
+    el.addEventListener('keydown', (e) => {
+      if((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.quick-url-delete')){
+        e.preventDefault();
+        const item = state.quickUrls.find(q => q.id === el.dataset.id);
+        if(item) window.location.href = item.url;
+      }
+    });
+  });
+
+  quickUrlListEl.querySelectorAll('.quick-url-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.quickUrls = state.quickUrls.filter(q => q.id !== btn.dataset.id);
+      saveState();
+      renderQuickUrls();
+    });
+  });
+}
+
+quickUrlForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const url = normalizeUrl(quickUrlInput.value);
+  if(!url) return;
+
+  state.quickUrls.push({
+    id: 'qu_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    url,
+    createdAt: Date.now()
+  });
+  saveState();
+  quickUrlInput.value = '';
+  renderQuickUrls();
+  showToast('บันทึกลิงก์แล้ว');
+});
+
+/* ================================================================
+   BACKUP — Export state to a downloadable .json file,
+   and Import a previously exported file back into localStorage.
+   ================================================================ */
+const exportBtn = document.getElementById('export-btn');
+const importBtn = document.getElementById('import-btn');
+const importFileInput = document.getElementById('import-file-input');
+
+exportBtn.addEventListener('click', () => {
+  try{
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
+
+    const now = new Date();
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+
     const a = document.createElement('a');
     a.href = url;
-    a.download = `nexus-backup-${dateStr}.json`;
+    a.download = `dashboard-backup-${stamp}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-  });
 
-  let pendingImportData = null;
+    showToast('ดาวน์โหลดไฟล์สำรองแล้ว');
+  }catch(e){
+    console.error('Export ล้มเหลว', e);
+    showToast('Export ไม่สำเร็จ');
+  }
+});
 
-  el.btnImport.addEventListener('click', () => el.fileImport.click());
-  el.fileImport.addEventListener('change', () => {
-    const file = el.fileImport.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try{
-        const parsed = JSON.parse(reader.result);
-        if(typeof parsed !== 'object' || parsed === null){
-          throw new Error('Invalid backup structure');
-        }
-        pendingImportData = parsed;
-        showModal(el.importModalOverlay);
-      }catch(err){
-        alert('That file could not be read as a valid backup (invalid JSON structure).');
+importBtn.addEventListener('click', () => importFileInput.click());
+
+importFileInput.addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+
+      if(!parsed || !Array.isArray(parsed.bookmarks)){
+        showToast('ไฟล์ไม่ถูกต้อง หรือไม่ใช่ไฟล์สำรองของ Dashboard นี้');
+        return;
       }
-      el.fileImport.value = '';
-    };
-    reader.readAsText(file);
-  });
 
-  el.btnImportCancel.addEventListener('click', () => {
-    pendingImportData = null;
-    hideModal(el.importModalOverlay);
-  });
+      const confirmed = confirm('การ Import จะแทนที่ Bookmark และ Quick URL ปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?');
+      if(!confirmed) return;
 
-  el.btnImportConfirm.addEventListener('click', () => {
-    if(pendingImportData){
-      state = normalizeState(pendingImportData);
+      state = parsed;
+      if(!Array.isArray(state.quickUrls)) state.quickUrls = [];
       saveState();
-      renderAll();
+
+      renderBookmarks();
+      renderQuickUrls();
+
+      showToast('Import ข้อมูลสำเร็จ');
+    }catch(err){
+      console.error('Import ล้มเหลว', err);
+      showToast('ไม่สามารถอ่านไฟล์นี้ได้ — ตรวจสอบว่าเป็นไฟล์ JSON ที่ถูกต้อง');
+    }finally{
+      importFileInput.value = '';
     }
-    pendingImportData = null;
-    hideModal(el.importModalOverlay);
-  });
+  };
+  reader.onerror = () => {
+    showToast('อ่านไฟล์ไม่สำเร็จ');
+    importFileInput.value = '';
+  };
+  reader.readAsText(file);
+});
 
-  /* ==========================================================================
-     RESET ALL DATA (requires typing confirmation word)
-     ========================================================================== */
-  el.btnReset.addEventListener('click', () => {
-    el.resetInput.value = '';
-    el.btnResetConfirm.disabled = true;
-    showModal(el.resetModalOverlay);
-    el.resetInput.focus();
-  });
-  el.resetInput.addEventListener('input', () => {
-    el.btnResetConfirm.disabled = el.resetInput.value.trim().toUpperCase() !== 'RESET';
-  });
-  el.btnResetCancel.addEventListener('click', () => hideModal(el.resetModalOverlay));
-  el.btnResetConfirm.addEventListener('click', () => {
-    if(el.resetInput.value.trim().toUpperCase() !== 'RESET') return;
-    state = structuredClone(DEFAULT_STATE);
-    activeCategoryFilter = 'all';
-    saveState();
-    hideModal(el.resetModalOverlay);
-    renderAll();
-  });
+/* ================================================================
+   RESET — wipe localStorage and restore default (empty) state.
+   Destructive and unrecoverable without a backup, so this requires
+   typing a confirmation word, not just clicking OK.
+   ================================================================ */
+const resetBtn = document.getElementById('reset-btn');
 
-  /* ==========================================================================
-     COMMAND PALETTE (Ctrl/Cmd+K)
-     ========================================================================== */
-  let cmdkActiveIndex = -1;
-  let cmdkMatches = [];
+resetBtn.addEventListener('click', () => {
+  const firstConfirm = confirm('ต้องการลบ Bookmark และ Quick URL ทั้งหมด แล้วกลับไปใช้ค่าเริ่มต้นใช่หรือไม่?\n\nแนะนำให้กด Export สำรองข้อมูลก่อน หากยังไม่ได้ทำ');
+  if(!firstConfirm) return;
 
-  function openCmdk(){
-    el.cmdkInput.value = '';
-    showModal(el.cmdkOverlay);
-    renderCmdkResults('');
-    el.cmdkInput.focus();
-  }
-  function closeCmdk(){
-    hideModal(el.cmdkOverlay);
+  const typed = prompt('การกระทำนี้ไม่สามารถย้อนกลับได้ พิมพ์คำว่า "RESET" (ตัวพิมพ์ใหญ่) เพื่อยืนยัน:');
+  if(typed !== 'RESET'){
+    showToast('ยกเลิกการรีเซ็ต');
+    return;
   }
 
-  function renderCmdkResults(query){
-    const q = query.trim().toLowerCase();
-    cmdkMatches = !q ? [] : state.bookmarks.filter(b => {
-      const cat = state.categories.find(c => c.id === b.category);
-      return b.name.toLowerCase().includes(q)
-        || b.url.toLowerCase().includes(q)
-        || (cat && cat.name.toLowerCase().includes(q));
-    }).slice(0, 30);
+  try{
+    localStorage.removeItem(STORAGE_KEY);
+    showToast('รีเซ็ตข้อมูลสำเร็จ กำลังโหลดหน้าใหม่...');
+    setTimeout(() => location.reload(), 700);
+  }catch(e){
+    console.error('รีเซ็ตล้มเหลว', e);
+    showToast('รีเซ็ตไม่สำเร็จ');
+  }
+});
 
-    cmdkActiveIndex = cmdkMatches.length ? 0 : -1;
-    paintCmdkResults(q);
+/* ================================================================
+   COMMAND PALETTE (Ctrl+K)
+   ================================================================ */
+const paletteOverlay = document.getElementById('palette-overlay');
+const paletteInput = document.getElementById('palette-input');
+const paletteResults = document.getElementById('palette-results');
+let paletteActiveIndex = 0;
+let paletteMatches = [];
+
+function openPalette(){
+  paletteOverlay.classList.add('open');
+  paletteInput.value = '';
+  renderPaletteResults('');
+  setTimeout(() => paletteInput.focus(), 50);
+}
+function closePalette(){
+  paletteOverlay.classList.remove('open');
+}
+
+function renderPaletteResults(query){
+  const q = query.trim().toLowerCase();
+  paletteMatches = state.bookmarks
+    .filter(b => !q || b.name.toLowerCase().includes(q) || b.url.toLowerCase().includes(q))
+    .sort((a,b) => a.order - b.order);
+
+  paletteActiveIndex = 0;
+
+  if(paletteMatches.length === 0){
+    paletteResults.innerHTML = `<div class="palette-empty">ไม่พบ Bookmark ที่ตรงกัน — กด Enter เพื่อค้นหาผ่าน Google แทน</div>`;
+    return;
   }
 
-  function paintCmdkResults(q){
-    el.cmdkResults.innerHTML = '';
+  paletteResults.innerHTML = paletteMatches.map((bm, i) => `
+    <div class="palette-item ${i === 0 ? 'active' : ''}" data-index="${i}">
+      <span class="pf">${faviconMarkup(bm)}</span>
+      <span class="pname">${escapeHtml(bm.name)}</span>
+      <span class="purl">${escapeHtml(shortHost(bm.url))}</span>
+    </div>
+  `).join('');
 
-    if(!q){
-      const empty = document.createElement('div');
-      empty.className = 'cmdk-empty';
-      empty.textContent = 'Type to search your bookmarks, or press Enter to search the web.';
-      el.cmdkResults.appendChild(empty);
-      return;
-    }
-
-    if(cmdkMatches.length === 0){
-      const empty = document.createElement('div');
-      empty.className = 'cmdk-empty';
-      empty.textContent = `No bookmarks matched "${q}". Press Enter to search the web instead.`;
-      el.cmdkResults.appendChild(empty);
-      return;
-    }
-
-    cmdkMatches.forEach((bm, i) => {
-      const row = document.createElement('div');
-      row.className = 'cmdk-item' + (i === cmdkActiveIndex ? ' active' : '');
-      row.setAttribute('role','option');
-      row.setAttribute('aria-selected', i === cmdkActiveIndex ? 'true':'false');
-      const fav = buildFavicon(bm.name, bm.url);
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      meta.innerHTML = `<div class="n"></div><div class="u"></div>`;
-      meta.querySelector('.n').textContent = bm.name;
-      meta.querySelector('.u').textContent = bm.url;
-      row.appendChild(fav);
-      row.appendChild(meta);
-      row.addEventListener('click', () => { navigateSameTab(bm.url); closeCmdk(); });
-      row.addEventListener('mousemove', () => {
-        if(cmdkActiveIndex !== i){ cmdkActiveIndex = i; paintCmdkResults(q); }
-      });
-      el.cmdkResults.appendChild(row);
+  paletteResults.querySelectorAll('.palette-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const bm = paletteMatches[Number(item.dataset.index)];
+      if(bm){ window.location.href = bm.url; }
     });
-  }
+    item.addEventListener('mouseenter', () => {
+      paletteActiveIndex = Number(item.dataset.index);
+      highlightPaletteActive();
+    });
+  });
+}
 
-  document.addEventListener('keydown', (e) => {
-    const isK = e.key === 'k' || e.key === 'K';
-    if((e.ctrlKey || e.metaKey) && isK){
-      e.preventDefault();
-      if(el.cmdkOverlay.hidden) openCmdk(); else closeCmdk();
+function highlightPaletteActive(){
+  paletteResults.querySelectorAll('.palette-item').forEach(item => {
+    item.classList.toggle('active', Number(item.dataset.index) === paletteActiveIndex);
+  });
+  const activeEl = paletteResults.querySelector('.palette-item.active');
+  if(activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+}
+
+paletteInput.addEventListener('input', () => renderPaletteResults(paletteInput.value));
+
+paletteInput.addEventListener('keydown', (e) => {
+  if(e.key === 'ArrowDown'){
+    e.preventDefault();
+    if(paletteMatches.length){
+      paletteActiveIndex = (paletteActiveIndex + 1) % paletteMatches.length;
+      highlightPaletteActive();
     }
-  });
-
-  el.cmdkInput.addEventListener('input', () => renderCmdkResults(el.cmdkInput.value));
-
-  el.cmdkInput.addEventListener('keydown', (e) => {
-    if(e.key === 'ArrowDown'){
-      e.preventDefault();
-      if(cmdkMatches.length){
-        cmdkActiveIndex = (cmdkActiveIndex + 1) % cmdkMatches.length;
-        paintCmdkResults(el.cmdkInput.value.trim().toLowerCase());
-      }
-    } else if(e.key === 'ArrowUp'){
-      e.preventDefault();
-      if(cmdkMatches.length){
-        cmdkActiveIndex = (cmdkActiveIndex - 1 + cmdkMatches.length) % cmdkMatches.length;
-        paintCmdkResults(el.cmdkInput.value.trim().toLowerCase());
-      }
-    } else if(e.key === 'Enter'){
-      e.preventDefault();
-      if(cmdkMatches.length && cmdkActiveIndex >= 0){
-        navigateSameTab(cmdkMatches[cmdkActiveIndex].url);
-        closeCmdk();
-      } else {
-        const q = el.cmdkInput.value.trim();
-        if(q){
-          navigateSameTab('https://www.google.com/search?q=' + encodeURIComponent(q));
-          closeCmdk();
-        }
-      }
-    } else if(e.key === 'Escape'){
-      closeCmdk();
+  } else if(e.key === 'ArrowUp'){
+    e.preventDefault();
+    if(paletteMatches.length){
+      paletteActiveIndex = (paletteActiveIndex - 1 + paletteMatches.length) % paletteMatches.length;
+      highlightPaletteActive();
     }
-  });
+  } else if(e.key === 'Enter'){
+    e.preventDefault();
+    if(paletteMatches.length){
+      const bm = paletteMatches[paletteActiveIndex];
+      window.location.href = bm.url;
+    } else if(paletteInput.value.trim()){
+      window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(paletteInput.value.trim());
+    }
+  } else if(e.key === 'Escape'){
+    closePalette();
+  }
+});
 
-  el.cmdkOverlay.addEventListener('click', (e) => {
-    if(e.target === el.cmdkOverlay) closeCmdk();
-  });
+paletteOverlay.addEventListener('click', (e) => { if(e.target === paletteOverlay) closePalette(); });
 
-  /* ==========================================================================
-     UTIL
-     ========================================================================== */
-  function escapeHtml(str){
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+/* ================================================================
+   GLOBAL KEYBOARD SHORTCUTS
+   Ctrl+K / Cmd+K -> open Command Palette
+   Escape         -> close any open overlay
+   ================================================================ */
+document.addEventListener('keydown', (e) => {
+  const isCtrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
+  if(isCtrlK){
+    e.preventDefault();
+    if(paletteOverlay.classList.contains('open')){
+      closePalette();
+    } else {
+      openPalette();
+    }
+    return;
+  }
+  if(e.key === 'Escape'){
+    if(bmModalOverlay.classList.contains('open')) closeBookmarkModal();
+  }
+});
+
+/* ================================================================
+   SIGNATURE BACKGROUND — film grain canvas.
+   Drawn once as a static random-noise tile (cheap: no per-frame
+   redraw needed), then CSS handles the "overlay" blend + opacity.
+   Regenerated only on resize so it always covers the viewport.
+   ================================================================ */
+(function filmGrain(){
+  const canvas = document.getElementById('grain-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function draw(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    const buf = imageData.data;
+    for(let i = 0; i < buf.length; i += 4){
+      const v = Math.floor(Math.random() * 255);
+      buf[i] = v; buf[i+1] = v; buf[i+2] = v; buf[i+3] = 255;
+    }
+    ctx.putImageData(imageData, 0, 0);
   }
 
-  /* ==========================================================================
-     MASTER RENDER
-     ========================================================================== */
-  function renderAll(){
-    renderStats();
-    renderCategoryTabs();
-    renderBookmarkGrid();
-    renderQuickList();
-  }
+  draw();
 
-  renderAll();
-
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(draw, 200);
+  });
 })();
+
+/* ================================================================
+   INITIAL RENDER
+   ================================================================ */
+renderBookmarks();
+renderQuickUrls();
 </script>
 </body>
 </html>
